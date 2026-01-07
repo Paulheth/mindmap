@@ -1,0 +1,63 @@
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  font-family: 'Inter', system-ui, sans-serif;
+}
+
+.app-header {
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background-color: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  z-index: 10;
+}
+
+.app-header h1 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+
+.view-controls button {
+  padding: 8px 16px;
+  margin-left: 10px;
+  border: 1px solid #cbd5e1;
+  background: white;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  color: #475569;
+  transition: all 0.2s;
+}
+
+.view-controls button:hover {
+  background: #f1f5f9;
+}
+
+.view-controls button.active {
+  background: #2563eb;
+  color: white;
+  border-color: #2563eb;
+}
+
+.app-content {
+  flex: 1;
+  overflow: hidden;
+  /* MapContainer handles its own scroll */
+  position: relative;
+}
+
+.placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: #94a3b8;
+  font-size: 1.5rem;
+}

@@ -1,0 +1,13 @@
+.connections-layer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    /* Ideally scrollWidth, but 100% of container which has overflow? */
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    /* Behind nodes? Nodes are usually z 1 or 10. */
+    overflow: visible;
+    /* Allow drawing outside? */
+}
