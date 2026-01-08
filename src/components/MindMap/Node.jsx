@@ -1,14 +1,26 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useMap } from '../../context/MapContext';
 import './Node.css';
 
-const Node = ({ node, direction = 'right', isRoot = false }) => {
+const Node = ({ node, positions, onReportSize, isRoot = false }) => {
     const { state, dispatch } = useMap();
     const isEditing = state.editingId === node.id;
     const [editText, setEditText] = useState(node.text);
     const inputRef = useRef(null);
+    const contentRef = useRef(null);
 
     const isSelected = state.selectedIds.includes(node.id);
+    const myPos = positions?.[node.id] || { x: 0, y: 0 };
+
+    // Measure and report size
+    useLayoutEffect(() => {
+        if (contentRef.current) {
+            const { offsetWidth, offsetHeight } = contentRef.current;
+            if (onReportSize) {
+                onReportSize(node.id, offsetWidth, offsetHeight);
+            }
+        }
+    }, [node.text, node.style, isEditing, onReportSize, node.id]);
 
     const handleClick = (e) => {
         e.stopPropagation();
@@ -74,82 +86,11 @@ const Node = ({ node, direction = 'right', isRoot = false }) => {
     }, [node.text])
 
 
-    // Root Layout Handling
-    if (isRoot) {
-        const children = node.children || [];
-        let leftChildren = [];
-        let rightChildren = [];
-
-        // Check if children have explicit side preference (from import)
-        const hasExplicitSide = children.some(c => c.side);
-
-        if (hasExplicitSide) {
-            leftChildren = children.filter(c => c.side === 'left');
-            // Default to right if 'right' or undefined/null
-            rightChildren = children.filter(c => c.side !== 'left');
-        } else {
-            // Default balanced split
-            const midpoint = Math.ceil(children.length / 2);
-            rightChildren = children.slice(0, midpoint);
-            leftChildren = children.slice(midpoint);
-        }
-
-        return (
-            <div className="node-wrapper root">
-                {/* Left Side */}
-                <div className="node-children left-side" style={{ marginRight: 60, marginLeft: 0, alignItems: 'flex-end' }}>
-                    {leftChildren.map(child => (
-                        <Node key={child.id} node={child} direction="left" />
-                    ))}
-                </div>
-
-                {/* Root Content */}
-                <div
-                    id={`node-${node.id}`}
-                    className={`node-content ${isSelected ? 'selected' : ''}`}
-                    onClick={handleClick}
-                    onDoubleClick={handleDoubleClick}
-                    draggable
-                    onDragStart={handleDragStart}
-                    onDragOver={handleDragOver}
-                    onDrop={handleDrop}
-                    style={{
-                        backgroundColor: node.style?.backgroundColor,
-                        color: node.style?.color,
-                        fontSize: node.style?.fontSize ? `${node.style.fontSize}px` : undefined,
-                        fontWeight: node.style?.fontWeight,
-                        fontStyle: node.style?.fontStyle,
-                        zIndex: 10
-                    }}
-                >
-                    {isEditing ? (
-                        <input
-                            ref={inputRef}
-                            value={editText}
-                            onChange={(e) => setEditText(e.target.value)}
-                            onBlur={handleBlur}
-                            onKeyDown={handleKeyDown}
-                            className="node-input"
-                        />
-                    ) : (
-                        <span className="node-text">{node.text}</span>
-                    )}
-                    {/* No collapse button on root usually */}
-                </div>
-
-                {/* Right Side */}
-                <div className="node-children right-side">
-                    {rightChildren.map(child => (
-                        <Node key={child.id} node={child} direction="right" />
-                    ))}
-                </div>
-            </div>
-        );
-    }
-
     return (
-        <div className={`node-wrapper ${direction === 'left' ? 'left-side' : ''}`}>
+        <div className={`node-wrapper ${isRoot ? 'root' : ''}`}>
+            {/* Node Content (The visual box) */}
             <div
+                ref={contentRef}
                 id={`node-${node.id}`}
                 className={`node-content ${isSelected ? 'selected' : ''}`}
                 onClick={handleClick}
@@ -180,7 +121,9 @@ const Node = ({ node, direction = 'right', isRoot = false }) => {
                     <span className="node-text">{node.text}</span>
                 )}
                 {node.date && <div className="node-date">{node.date}</div>}
-                {node.children && node.children.length > 0 && (
+
+                {/* Collapse Button */}
+                {!isRoot && node.children && node.children.length > 0 && (
                     <div
                         className="collapse-btn"
                         onClick={toggleCollapse}
@@ -191,11 +134,39 @@ const Node = ({ node, direction = 'right', isRoot = false }) => {
                 )}
             </div>
 
+            {/* Children Layer (Absolute Positioning) */}
             {!node.isCollapsed && node.children && node.children.length > 0 && (
-                <div className={`node-children ${direction === 'left' ? 'left-side' : ''}`}>
-                    {node.children.map(child => (
-                        <Node key={child.id} node={child} direction={direction} />
-                    ))}
+                <div className="node-children-layer" style={{ position: 'absolute', top: 0, left: 0, width: 0, height: 0, overflow: 'visible' }}>
+                    {node.children.map(child => {
+                        const childPos = positions?.[child.id];
+                        if (!childPos) return null; // Wait for layout
+
+                        // Calculate relative position from Parent Center (or Top-Left) to Child
+                        // Note: myPos and childPos are absolute coordinates in the map space.
+                        // We are inside the Parent's div.
+                        // If Parent is at (100, 100) and Child is at (200, 150).
+                        // Rel = (100, 50).
+                        const relX = childPos.x - myPos.x;
+                        const relY = childPos.y - myPos.y;
+
+                        return (
+                            <div
+                                key={child.id}
+                                style={{
+                                    position: 'absolute',
+                                    transform: `translate(${relX}px, ${relY}px)`,
+                                    // Ensure width doesn't collapse 
+                                    width: 'max-content'
+                                }}
+                            >
+                                <Node
+                                    node={child}
+                                    positions={positions}
+                                    onReportSize={onReportSize}
+                                />
+                            </div>
+                        );
+                    })}
                 </div>
             )}
         </div>

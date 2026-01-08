@@ -22,6 +22,15 @@
     /* Center horizontally */
 }
 
+/* Force width constraint for wrapping in Spread Mode */
+.map-canvas.spread-layout {
+    width: auto;
+    /* Allow expanding beyond viewport if columns grow */
+    min-width: 100%;
+    display: inline-flex;
+    /* Back to inline-flex to grab scroll area */
+}
+
 /* Ensure SVG matches the CANVAS size, not the VIEWPORT */
 .map-canvas .connections-layer {
     position: absolute;

@@ -1,13 +1,17 @@
+/* Node Wrapper */
 .node-wrapper {
+  position: relative;
+  /* Anchor for children */
   display: flex;
+  /* Center content in wrapper if needed, or block */
   align-items: center;
-  padding: 5px 0;
+  justify-content: center;
+  padding: 0;
+  width: max-content;
+  /* Ensure wrapper hugs content */
 }
 
-.node-wrapper.left-side {
-  flex-direction: row-reverse;
-}
-
+/* Node Content Box */
 .node-content {
   padding: 8px 12px;
   background-color: #ffffff;
@@ -47,20 +51,7 @@
   width: 100%;
 }
 
-.node-children {
-  display: flex;
-  flex-direction: column;
-  margin-left: 60px;
-  position: relative;
-  justify-content: center;
-}
 
-.node-children.left-side {
-  margin-left: 0;
-  margin-right: 60px;
-  align-items: flex-end;
-  /* Align children to the right so they stick to parent */
-}
 
 .node-date {
   font-size: 0.7em;

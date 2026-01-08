@@ -25,7 +25,8 @@ const initialState = {
     editingId: null, // Track which node is being edited
     links: [],
     zoom: 1,
-    view: 'map'
+    view: 'map',
+    horizontalSpread: 0 // 0 (Vertical) to 5 (Wide)
 };
 
 // Helper to find parent of a node (for sibling addition / deletion)
@@ -278,6 +279,9 @@ const mapReducer = (state, action) => {
 
         case 'SET_VIEW':
             return { ...state, view: action.payload };
+
+        case 'SET_HORIZONTAL_SPREAD':
+            return { ...state, horizontalSpread: action.payload };
 
         default:
             return state;

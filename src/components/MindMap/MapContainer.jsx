@@ -1,12 +1,39 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useLayoutEffect } from 'react';
 import { useMap } from '../../context/MapContext';
+import { calculateMindMapLayout } from '../../utils/layoutEngine';
 import Node from './Node';
 import ConnectionsLayer from './ConnectionsLayer';
+import TimelineView from '../Timeline/TimelineView';
 import './MapContainer.css';
 
 const MapContainer = () => {
     const { state, dispatch } = useMap();
     const containerRef = useRef(null);
+
+    const [nodeDimensions, setNodeDimensions] = useState({});
+    const [nodePositions, setNodePositions] = useState({});
+    const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
+
+    // Calculate Layout whenever tree or dimensions change
+    // Only if we are in MAP view? Or always?
+    // Optimization: Only layout if view is map.
+    useLayoutEffect(() => {
+        if (!state.root || state.view !== 'map') return;
+        const layout = calculateMindMapLayout(state.root, nodeDimensions);
+        setNodePositions(layout.nodes || {});
+        setCanvasSize({ width: layout.width || 0, height: layout.height || 0 });
+    }, [state.root, nodeDimensions, state.view]);
+
+    // Optimize size reporting to avoid unnecessary re-renders
+    const handleReportSize = useCallback((id, width, height) => {
+        setNodeDimensions(prev => {
+            const current = prev[id];
+            if (current && Math.abs(current.width - width) < 2 && Math.abs(current.height - height) < 2) {
+                return prev;
+            }
+            return { ...prev, [id]: { width, height } };
+        });
+    }, []);
 
     useEffect(() => {
         const handleKeyDown = (e) => {
@@ -50,16 +77,33 @@ const MapContainer = () => {
         return () => window.removeEventListener('keydown', handleKeyDown);
     }, [state.selectedIds, dispatch]);
 
+    // Render Timeline View if active
+    if (state.view === 'timeline') {
+        return (
+            <div className="map-container" ref={containerRef}>
+                <TimelineView />
+            </div>
+        );
+    }
+
     return (
         <div className="map-container" ref={containerRef}>
             <div
-                className="map-canvas"
+                className={`map-canvas`} // Layout is now absolute, removed responsive classes
                 style={{
                     transform: `scale(${state.zoom || 1})`,
+                    position: 'relative', // Anchor for absolute children
+                    width: canvasSize.width, // Explicit size from layout engine
+                    height: canvasSize.height
                 }}
             >
                 <ConnectionsLayer />
-                <Node node={state.root} isRoot={true} />
+                <Node
+                    node={state.root}
+                    isRoot={true}
+                    positions={nodePositions}
+                    onReportSize={handleReportSize}
+                />
             </div>
         </div >
     );
