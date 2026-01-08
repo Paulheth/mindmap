@@ -151,18 +151,18 @@ const IconToolbar = () => {
 
             <div className="toolbar-group">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748b' }}>
-                    <span>Tight</span>
+                    <span>Vertical</span>
                     <input
                         type="range"
                         min="0"
                         max="10"
                         step="1"
-                        value={state.layoutSpacing || 5}
+                        value={state.layoutSpacing || 0}
                         onChange={(e) => dispatch({ type: 'SET_LAYOUT_SPACING', payload: parseInt(e.target.value) })}
                         style={{ width: 100 }}
-                        title={`Spacing Density: ${state.layoutSpacing || 5}`}
+                        title={`Wall Spread: ${state.layoutSpacing || 0}`}
                     />
-                    <span>Loose</span>
+                    <span>Wide</span>
                 </div>
             </div>
 

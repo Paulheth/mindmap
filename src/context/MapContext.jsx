@@ -27,7 +27,7 @@ const initialState = {
     zoom: 1,
     view: 'map',
     horizontalSpread: 0, // 0 (Vertical) to 5 (Wide) -- Deprecated but kept for compatibility?
-    layoutSpacing: 5 // 0 (Tight) to 10 (Loose)
+    layoutSpacing: 0 // 0 (Vertical) to 10 (Wide / Wall Fill)
 };
 
 // Helper to find parent of a node (for sibling addition / deletion)

@@ -78,6 +78,7 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
     useEffect(() => {
         if (isEditing && inputRef.current) {
             inputRef.current.focus();
+            inputRef.current.select();
         }
     }, [isEditing]);
 
