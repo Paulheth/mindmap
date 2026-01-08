@@ -150,6 +150,23 @@ const IconToolbar = () => {
             <div className="separator"></div>
 
             <div className="toolbar-group">
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748b' }}>
+                    <span>Tight</span>
+                    <input
+                        type="range"
+                        min="0"
+                        max="10"
+                        step="1"
+                        value={state.layoutSpacing || 5}
+                        onChange={(e) => dispatch({ type: 'SET_LAYOUT_SPACING', payload: parseInt(e.target.value) })}
+                        style={{ width: 100 }}
+                        title={`Spacing Density: ${state.layoutSpacing || 5}`}
+                    />
+                    <span>Loose</span>
+                </div>
+            </div>
+
+            <div className="toolbar-group">
                 <div className="date-wrapper">
                     <Calendar size={18} />
                     <input

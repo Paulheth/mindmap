@@ -19,10 +19,10 @@ const MapContainer = () => {
     // Optimization: Only layout if view is map.
     useLayoutEffect(() => {
         if (!state.root || state.view !== 'map') return;
-        const layout = calculateMindMapLayout(state.root, nodeDimensions);
+        const layout = calculateMindMapLayout(state.root, nodeDimensions, state.layoutSpacing);
         setNodePositions(layout.nodes || {});
         setCanvasSize({ width: layout.width || 0, height: layout.height || 0 });
-    }, [state.root, nodeDimensions, state.view]);
+    }, [state.root, nodeDimensions, state.view, state.layoutSpacing]);
 
     // Optimize size reporting to avoid unnecessary re-renders
     const handleReportSize = useCallback((id, width, height) => {

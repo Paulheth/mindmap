@@ -1,8 +1,7 @@
 import { flextree } from 'd3-flextree';
 import { hierarchy } from 'd3-hierarchy';
 
-const GAP_X = 50; // Horizontal gap between nodes
-const GAP_Y = 10; // Vertical gap between nodes
+
 
 /**
  * Calculates the X,Y coordinates for all nodes in the mind map.
@@ -10,10 +9,20 @@ const GAP_Y = 10; // Vertical gap between nodes
  * 
  * @param {Object} rootNode - The root data object of the tree.
  * @param {Object} nodeDimensions - Map of node ID to { width, height }.
+ * @param {number} spacingFactor - 0 (Tight) to 10 (Loose). Default 5.
  * @returns {Object} { nodes: { [id]: {x,y} }, width, height }
  */
-export const calculateMindMapLayout = (rootNode, nodeDimensions) => {
+export const calculateMindMapLayout = (rootNode, nodeDimensions, spacingFactor = 5) => {
     if (!rootNode) return {};
+
+    // Dynamic Gaps based on Factor (0-10)
+    // X = Horizontal Separation (Depth distance)
+    // Y = Vertical Separation (Sibling distance)
+
+    // Base: Tight (0) -> X: 40, Y: 4
+    // Max: Loose (10) -> X: 150, Y: 50
+    const GAP_X = 40 + (spacingFactor * 11);
+    const GAP_Y = 4 + (spacingFactor * 4.6);
 
     const positions = {};
 

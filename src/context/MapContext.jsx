@@ -26,7 +26,8 @@ const initialState = {
     links: [],
     zoom: 1,
     view: 'map',
-    horizontalSpread: 0 // 0 (Vertical) to 5 (Wide)
+    horizontalSpread: 0, // 0 (Vertical) to 5 (Wide) -- Deprecated but kept for compatibility?
+    layoutSpacing: 5 // 0 (Tight) to 10 (Loose)
 };
 
 // Helper to find parent of a node (for sibling addition / deletion)
@@ -282,6 +283,9 @@ const mapReducer = (state, action) => {
 
         case 'SET_HORIZONTAL_SPREAD':
             return { ...state, horizontalSpread: action.payload };
+
+        case 'SET_LAYOUT_SPACING':
+            return { ...state, layoutSpacing: action.payload };
 
         default:
             return state;
