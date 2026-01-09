@@ -1,7 +1,7 @@
 import React from 'react';
 import { useMap } from '../../context/MapContext';
 import { parseMMFile } from '../../utils/mmParser';
-import { generateMMFile } from '../../utils/mmGenerator';
+import { generateMMFileContent } from '../../utils/mmGenerator';
 import './IconToolbar.css';
 
 const IconToolbar = () => {
@@ -136,7 +136,7 @@ const IconToolbar = () => {
                     downloadFile(JSON.stringify(state), 'mindmap.json', 'text/json');
                 }}><IconSave /></button>
                 <button title="Save as .mm" onClick={() => {
-                    const xmlContent = generateMMFile(state);
+                    const xmlContent = generateMMFileContent(state);
                     downloadFile(xmlContent, 'mindmap.mm', 'text/xml');
                 }}><IconSaveMM /></button>
                 <label className="autosave-toggle" title="Toggle Auto Save" style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', marginLeft: 8, cursor: 'pointer', userSelect: 'none' }}>

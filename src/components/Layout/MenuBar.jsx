@@ -40,115 +40,113 @@ const MenuBar = () => {
             // This is a simplified parser. FreeMind uses <map><node TEXT="..."><node .../></node></map>
             const parseNode = (xmlNode) => {
                 const text = xmlNode.getAttribute('TEXT') || 'Node';
-                const color = xmlNode.getAttribute('COLOR');
-                const bgColor = xmlNode.getAttribute('BACKGROUND_COLOR');
-                // Check common date attributes (FreeMind uses CREATED/MODIFIED, custom format uses DATE?)
-                // Let's assume DATE for standard or otherwise ignore.
-                // Or user's specific format?
-                // Let's try to grab 'start', 'end', or 'DATE'.
-                // If this is a fresh import from this app's own export (if it exported to mm), we'd know.
-                // But this app exports JSON.
-                // Import is for external tools.
-                // Let's capture COLOR at least.
-
-                const style = {};
-                if (color) style.color = color;
-                if (bgColor) style.backgroundColor = bgColor;
-
-                // Fallback defaults if no style found
-                if (!style.color) style.color = '#000000';
-                // background defaults to white or inherited? Let's use basic default.
-                if (!style.backgroundColor) style.backgroundColor = '#ffffff';
-
-                const children = [];
-                // Iterate child nodes
-                for (let i = 0; i < xmlNode.childNodes.length; i++) {
-                    const child = xmlNode.childNodes[i];
-                    if (child.nodeName === 'node') {
-                        children.push(parseNode(child));
+                try {
+                    if (file.name.toLowerCase().endsWith('.json')) {
+                        const loadedState = JSON.parse(text);
+                        if (!loadedState.root) throw new Error("Invalid JSON");
+                        dispatch({ type: 'LOAD_MAP', payload: loadedState });
+                    } else {
+                        const parsedData = parseMMFile(text);
+                        if (parsedData?.root) {
+                            dispatch({
+                                type: 'LOAD_MAP',
+                                payload: { ...initialState, ...parsedData }
+                            });
+                        }
                     }
+                } catch (error) {
+                    alert("Import Failed: " + error.message);
                 }
-                return {
-                    id: uuidv4(),
-                    text: text,
-                    date: null, // Basic MM doesn't have standard timeline date.
-                    style: style,
-                    children: children
-                };
             };
-
-            const mapCheck = xmlDoc.getElementsByTagName('map')[0];
-            if (mapCheck) {
-                const rootXml = mapCheck.getElementsByTagName('node')[0]; // First node is root
-                if (rootXml) {
-                    const newRoot = parseNode(rootXml);
-                    const newState = {
-                        root: newRoot,
-                        links: [] // Reset links as .mm links are complex (arrows), we skip for now
-                    };
-                    dispatch({ type: 'LOAD_MAP', payload: newState });
-                }
-            }
+            reader.readAsText(file);
         };
-        reader.readAsText(file);
-        e.target.value = ''; // Reset input
+
+        const handleSaveConfirm = (filename, format) => {
+            let content = '';
+            let mimeType = '';
+            let extension = '';
+
+            if (format === 'json') {
+                content = JSON.stringify(state, null, 2);
+                mimeType = 'application/json';
+                extension = 'json';
+            } else {
+                content = generateMMFileContent(state);
+                mimeType = 'application/xml';
+                extension = 'mm';
+            }
+
+            const blob = new Blob([content], { type: mimeType });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${filename}.${extension}`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        };
+
+        return (
+            <div className="menu-bar">
+                {/* File Menu */}
+                <div className="menu-item">
+                    File
+                    <div className="dropdown">
+                        <div className="dropdown-item" onClick={createNewMap}>New Map</div>
+                        <div className="dropdown-separator"></div>
+                        <div className="dropdown-item" onClick={() => dispatch({ type: 'SET_SAVE_MODAL_OPEN', payload: true })}>Save As...</div>
+                        <div className="dropdown-separator"></div>
+                        <div className="dropdown-item" onClick={() => handleOpenFile('.mm')}>Open (.mm)</div>
+                        <div className="dropdown-item" onClick={() => handleOpenFile('.json')}>Open (.json)</div>
+                        <div className="dropdown-separator"></div>
+                        {user && <div className="dropdown-item" onClick={logout}>Logout</div>}
+                    </div>
+                </div>
+
+                {/* Edit Menu */}
+                <div className="menu-item">
+                    Edit
+                    <div className="dropdown">
+                        <div className="dropdown-item" onClick={() => dispatch({ type: 'ADD_CHILD' })}>Add Child (Tab)</div>
+                        <div className="dropdown-item" onClick={() => dispatch({ type: 'ADD_SIBLING' })}>Add Sibling (Enter)</div>
+                        <div className="dropdown-item" onClick={() => dispatch({ type: 'DELETE_NODE' })}>Delete Node</div>
+                    </div>
+                </div>
+
+                <div className="menu-item">
+                    View
+                    <div className="dropdown">
+                        <div className="dropdown-item">Map View</div>
+                        <div className="dropdown-item">Timeline View</div>
+                    </div>
+                </div>
+
+                <div className="logo-area">Mind Map Manager</div>
+
+                {user && (
+                    <div className="user-area" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' }}>
+                        <span>{user.email}</span>
+                        <button onClick={logout} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>Logout</button>
+                    </div>
+                )}
+
+                {/* Hidden Input for generic file opening */}
+                <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={importMap}
+                    accept={openFileFilter}
+                    style={{ display: 'none' }}
+                />
+
+                <SaveMapModal
+                    isOpen={state.isSaveModalOpen}
+                    onClose={() => dispatch({ type: 'SET_SAVE_MODAL_OPEN', payload: false })}
+                    onSave={handleSaveConfirm}
+                />
+            </div>
+        );
     };
 
-    const saveMap = () => {
-        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-        const downloadAnchorNode = document.createElement('a');
-        downloadAnchorNode.setAttribute("href", dataStr);
-        downloadAnchorNode.setAttribute("download", "mindmap.json");
-        document.body.appendChild(downloadAnchorNode);
-        downloadAnchorNode.click();
-        downloadAnchorNode.remove();
-    };
-
-    return (
-        <div className="menu-bar">
-            <div className="menu-item">
-                File
-                <div className="dropdown">
-                    <div className="dropdown-item" onClick={createNewMap}>New Map</div>
-                    <div className="dropdown-item" onClick={() => fileInputRef.current.click()}>Import Map (JSON/.mm)</div>
-                    <div className="dropdown-item" onClick={saveMap}>Export JSON</div>
-                    <div className="dropdown-separator"></div>
-                    <div className="dropdown-item" onClick={logout}>Logout</div>
-                </div>
-            </div>
-            <div className="menu-item">
-                Edit
-                <div className="dropdown">
-                    <div className="dropdown-item" onClick={() => dispatch({ type: 'ADD_CHILD' })}>Add Child (Tab)</div>
-                    <div className="dropdown-item" onClick={() => dispatch({ type: 'ADD_SIBLING' })}>Add Sibling (Enter)</div>
-                    <div className="dropdown-item" onClick={() => dispatch({ type: 'DELETE_NODE' })}>Delete Node</div>
-                </div>
-            </div>
-            <div className="menu-item">
-                View
-                <div className="dropdown">
-                    <div className="dropdown-item">Map View</div>
-                    <div className="dropdown-item">Timeline View</div>
-                </div>
-            </div>
-            <div className="logo-area">Mind Map Manager</div>
-
-            {user && (
-                <div className="user-area" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' }}>
-                    <span>{user.email}</span>
-                    <button onClick={logout} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>Logout</button>
-                </div>
-            )}
-
-            <input
-                type="file"
-                ref={fileInputRef}
-                onChange={importMM}
-                accept=".mm,.json"
-                style={{ display: 'none' }}
-            />
-        </div>
-    );
-};
-
-export default MenuBar;
+    export default MenuBar;
