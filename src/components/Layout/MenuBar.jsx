@@ -2,6 +2,7 @@ import React, { useRef } from 'react';
 import { useMap, initialState } from '../../context/MapContext';
 import { useAuth } from '../../context/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
+import { parseMMFile } from '../../utils/mmParser';
 import './MenuBar.css';
 
 const MenuBar = () => {
@@ -39,6 +40,26 @@ const MenuBar = () => {
             // This is a simplified parser. FreeMind uses <map><node TEXT="..."><node .../></node></map>
             const parseNode = (xmlNode) => {
                 const text = xmlNode.getAttribute('TEXT') || 'Node';
+                const color = xmlNode.getAttribute('COLOR');
+                const bgColor = xmlNode.getAttribute('BACKGROUND_COLOR');
+                // Check common date attributes (FreeMind uses CREATED/MODIFIED, custom format uses DATE?)
+                // Let's assume DATE for standard or otherwise ignore.
+                // Or user's specific format?
+                // Let's try to grab 'start', 'end', or 'DATE'.
+                // If this is a fresh import from this app's own export (if it exported to mm), we'd know.
+                // But this app exports JSON.
+                // Import is for external tools.
+                // Let's capture COLOR at least.
+
+                const style = {};
+                if (color) style.color = color;
+                if (bgColor) style.backgroundColor = bgColor;
+
+                // Fallback defaults if no style found
+                if (!style.color) style.color = '#000000';
+                // background defaults to white or inherited? Let's use basic default.
+                if (!style.backgroundColor) style.backgroundColor = '#ffffff';
+
                 const children = [];
                 // Iterate child nodes
                 for (let i = 0; i < xmlNode.childNodes.length; i++) {
@@ -50,8 +71,8 @@ const MenuBar = () => {
                 return {
                     id: uuidv4(),
                     text: text,
-                    date: null,
-                    style: { backgroundColor: '#ffffff', color: '#000000', fontSize: 14 },
+                    date: null, // Basic MM doesn't have standard timeline date.
+                    style: style,
                     children: children
                 };
             };
@@ -89,7 +110,7 @@ const MenuBar = () => {
                 File
                 <div className="dropdown">
                     <div className="dropdown-item" onClick={createNewMap}>New Map</div>
-                    <div className="dropdown-item" onClick={() => fileInputRef.current.click()}>Import .mm file</div>
+                    <div className="dropdown-item" onClick={() => fileInputRef.current.click()}>Import Map (JSON/.mm)</div>
                     <div className="dropdown-item" onClick={saveMap}>Export JSON</div>
                     <div className="dropdown-separator"></div>
                     <div className="dropdown-item" onClick={logout}>Logout</div>
@@ -123,7 +144,7 @@ const MenuBar = () => {
                 type="file"
                 ref={fileInputRef}
                 onChange={importMM}
-                accept=".mm"
+                accept=".mm,.json"
                 style={{ display: 'none' }}
             />
         </div>

@@ -2,78 +2,19 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMap } from '../../context/MapContext';
 import './NoteEditor.css';
 
-const NoteEditor = ({ position = { x: 0, y: 0 } }) => {
+const NoteEditor = () => {
     const { state, dispatch } = useMap();
     const { editingNoteId } = state;
     const [noteText, setNoteText] = useState('');
     const textareaRef = useRef(null);
 
-    // Find the node being edited to get initial text
-    const findNodeById = (root, id) => {
-        if (!root) return null;
-        if (root.id === id) return root;
-        if (root.children) {
-            for (let child of root.children) {
-                const found = findNodeById(child, id);
-                if (found) return found;
-            }
-        }
-        return null;
-    };
+    // ... (rest of logic)
 
-    const node = editingNoteId ? findNodeById(state.root, editingNoteId) : null;
-
-    useEffect(() => {
-        if (node) {
-            setNoteText(node.note || '');
-        }
-    }, [node]);
-
-    useEffect(() => {
-        // Auto-focus with a slight delay to ensure render
-        setTimeout(() => {
-            if (textareaRef.current) {
-                textareaRef.current.focus();
-            }
-        }, 50);
-    }, [editingNoteId]);
-
-    if (!editingNoteId) return null;
-
-    const handleSave = () => {
-        dispatch({
-            type: 'UPDATE_NODE',
-            payload: {
-                id: editingNoteId,
-                updates: { note: noteText }
-            }
-        });
-        dispatch({ type: 'SET_EDITING_NOTE_ID', payload: null });
-    };
-
-    const handleDelete = () => {
-        dispatch({
-            type: 'UPDATE_NODE',
-            payload: {
-                id: editingNoteId,
-                updates: { note: null }
-            }
-        });
-        dispatch({ type: 'SET_EDITING_NOTE_ID', payload: null });
-    };
-
-    const handleClose = () => {
-        dispatch({ type: 'SET_EDITING_NOTE_ID', payload: null });
-    };
-
+    // Return block update
     return (
         <div
             className="note-editor-container"
-            style={{
-                left: position.x,
-                top: position.y
-            }}
-            onClick={(e) => e.stopPropagation()} // Prevent map interaction
+            onClick={(e) => e.stopPropagation()}
             onWheel={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
         >

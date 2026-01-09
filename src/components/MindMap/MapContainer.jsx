@@ -3,7 +3,6 @@ import { useMap } from '../../context/MapContext';
 import { calculateMindMapLayout } from '../../utils/layoutEngine';
 import Node from './Node';
 import ConnectionsLayer from './ConnectionsLayer';
-import NoteEditor from './NoteEditor';
 import StyleEditor from './StyleEditor';
 import TimelineView from '../Timeline/TimelineView';
 import './MapContainer.css';

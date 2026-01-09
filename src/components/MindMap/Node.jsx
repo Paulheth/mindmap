@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useMap } from '../../context/MapContext';
 import { NotePencil } from '@phosphor-icons/react';
+import NoteEditor from './NoteEditor';
 import './Node.css';
 
 const Node = ({ node, positions, onReportSize, level = 0 }) => {
@@ -173,6 +174,23 @@ const Node = ({ node, positions, onReportSize, level = 0 }) => {
                     </div>
                 )}
             </div>
+
+            {/* Note Editor anchored to node */}
+            {state.editingNoteId === node.id && (
+                <div
+                    className="note-editor-anchor"
+                    style={{
+                        position: 'absolute',
+                        left: '100%',
+                        top: '-10px',
+                        marginLeft: '12px',
+                        zIndex: 2000
+                    }}
+                    onClick={e => e.stopPropagation()}
+                >
+                    <NoteEditor />
+                </div>
+            )}
 
             {/* Children Layer (Absolute Positioning) */}
             {!node.isCollapsed && node.children && node.children.length > 0 && (
