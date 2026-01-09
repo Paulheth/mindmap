@@ -3,6 +3,7 @@ import { useMap } from '../../context/MapContext';
 import { calculateMindMapLayout } from '../../utils/layoutEngine';
 import Node from './Node';
 import ConnectionsLayer from './ConnectionsLayer';
+import NoteEditor from './NoteEditor';
 import TimelineView from '../Timeline/TimelineView';
 import './MapContainer.css';
 
@@ -104,6 +105,7 @@ const MapContainer = () => {
                     positions={nodePositions}
                     onReportSize={handleReportSize}
                 />
+                <NoteEditor />
             </div>
         </div >
     );

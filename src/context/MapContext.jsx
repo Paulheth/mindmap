@@ -23,6 +23,7 @@ const initialState = {
     root: initialNode,
     selectedIds: ['root'],
     editingId: null, // Track which node is being edited
+    editingNoteId: null, // Track which node's note is being edited
     links: [],
     zoom: 1,
     view: 'map',
@@ -277,6 +278,9 @@ const mapReducer = (state, action) => {
 
         case 'SET_EDITING_ID':
             return { ...state, editingId: action.payload };
+
+        case 'SET_EDITING_NOTE_ID':
+            return { ...state, editingNoteId: action.payload };
 
         case 'SET_VIEW':
             return { ...state, view: action.payload };

@@ -32,11 +32,6 @@ const ConnectionsLayer = () => {
 
         // 1. Draw Tree Connections (Parent -> Child)
         const traverse = (node) => {
-            // Skip collapsed children logic is handled by Node not rendering them, 
-            // so `node.children` iteration here should check if they are actually in DOM?
-            // If `node.isCollapsed` is true, Node component doesn't render children.
-            // But `state.root` still has them.
-            // We should respect `isCollapsed`.
             if (node.isCollapsed || !node.children || node.children.length === 0) return;
 
             const parentCenter = getCenter(node.id);
@@ -45,51 +40,67 @@ const ConnectionsLayer = () => {
             node.children.forEach(child => {
                 const childCenter = getCenter(child.id);
                 if (childCenter) {
-                    // Determine direction based on position
-                    // Standard Right-side growth: Child is to right of Parent.
-                    // dX = endX - startX.
-                    // If Right: dX > 0.
-                    // If Left: dX < 0.
-                    // Logic:
-                    // Start (Parent Edge) -> End (Child Inner Edge).
-                    // Actually, `getCenter` returns center.
-                    // Proper anchor points:
-                    // Right Side: Parent Right Edge -> Child Left Edge.
-                    // Left Side: Parent Left Edge -> Child Right Edge.
+                    // Smart / Flexible Connection Logic
+                    // 1. Calculate relative positions
+                    const dx = childCenter.x - parentCenter.x;
+                    const dy = childCenter.y - parentCenter.y;
+                    const absDx = Math.abs(dx);
+                    const absDy = Math.abs(dy);
 
-                    let pX, pY, cX, cY;
-                    if (childCenter.x < parentCenter.x) {
-                        // Left Side
-                        pX = parentCenter.x - parentCenter.width / 2;
-                        pY = parentCenter.y;
-                        cX = childCenter.x + childCenter.width / 2;
-                        cY = childCenter.y;
-                    } else {
-                        // Right Side
-                        pX = parentCenter.x + parentCenter.width / 2;
-                        pY = parentCenter.y;
-                        cX = childCenter.x - childCenter.width / 2;
-                        cY = childCenter.y;
-                    }
+                    // 2. Determine "Exit" face for Parent and "Entry" face for Child
+                    // Preference: Horizontal (side-to-side) for Mind Maps, but allow Vertical if steep.
 
-                    const distX = cX - pX;
+                    let startX, startY, endX, endY;
+                    let cp1x, cp1y, cp2x, cp2y;
 
-                    // Curvature: always extend horizontally first.
-                    // CP1 should be pX + offset (where offset is towards cX).
-                    // CP2 should be cX - offset (where offset is towards pX).
-                    // If distX is negative (Left), we want pX - abs(offset).
-                    // Basically `pX + distX * 0.4` works for both directions?
-                    // Right: 10 + 100*0.4 = 50. Correct.
-                    // Left: 100 + (-100)*0.4 = 60. Correct.
+                    // Parent Exit Point
+                    // If strictly Right/Left (common in Mind Maps), force side.
+                    // But for "Organic" 360, we might exit Bottom/Top.
 
-                    const cp1x = pX + distX * 0.4;
-                    const cp1y = pY;
-                    const cp2x = cX - distX * 0.4;
-                    const cp2y = cY;
+                    // Simple logic: If mostly horizontal, use sides. If mostly vertical, use top/bottom?
+                    // User Example looks like mostly Side connections even for vertical stacks, 
+                    // BUT for the "Multiple Top Nodes" scenario, maybe they want freedom.
+                    // Let's stick to Side-to-Side mostly as it's cleaner for text, 
+                    // but adapt the handle length.
+
+                    const isRight = dx > 0;
+
+                    // Start from edges
+                    startX = isRight ? (parentCenter.x + parentCenter.width / 2) : (parentCenter.x - parentCenter.width / 2);
+                    startY = parentCenter.y;
+
+                    endX = isRight ? (childCenter.x - childCenter.width / 2) : (childCenter.x + childCenter.width / 2);
+                    endY = childCenter.y;
+
+                    // 3. Curve Logic
+                    // Standard Mind Map S-Curve
+                    // CP1 projects horizontally from Parent
+                    // CP2 projects horizontally from Child (to ensure straight entry)
+
+                    // Slack/Strength of curve depends on distance
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    const tension = Math.min(dist * 0.5, 150);
+
+                    // Direction vector
+                    const dir = isRight ? 1 : -1;
+
+                    cp1x = startX + (tension * dir);
+                    cp1y = startY;
+
+                    cp2x = endX - (tension * dir);
+                    cp2y = endY;
+
+                    // SPECIAL CASE: Vertical Overlap (Child directly above/below)
+                    // If dx is very small compared to dy, side-exit looks bad (C-curve).
+                    // Switch to Bottom/Top exit/entry? 
+                    // Let's try to keep it Side-Exit but reduce tension if vertical?
+                    // Or, if absDx < parentWidth/2, maybe exit vertically?
+
+                    // For now, robust S-curve works well for most organic layouts unless perfectly vertical.
 
                     newPaths.push({
                         id: `link-${node.id}-${child.id}`,
-                        d: `M ${pX} ${pY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${cX} ${cY}`,
+                        d: `M ${startX} ${startY} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${endX} ${endY}`,
                         type: 'tree'
                     });
 

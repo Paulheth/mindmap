@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useMap } from '../../context/MapContext';
+import { NotePencil } from '@phosphor-icons/react';
 import './Node.css';
 
 const Node = ({ node, positions, onReportSize, isRoot = false }) => {
@@ -122,6 +123,20 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
                     <span className="node-text">{node.text}</span>
                 )}
                 {node.date && <div className="node-date">{node.date}</div>}
+
+                {/* Note Indicator */}
+                {node.note && (
+                    <div
+                        className="node-note-icon"
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            dispatch({ type: 'SET_EDITING_NOTE_ID', payload: node.id });
+                        }}
+                        title="Edit Note"
+                    >
+                        <NotePencil size={16} weight="fill" />
+                    </div>
+                )}
 
                 {/* Collapse Button */}
                 {!isRoot && node.children && node.children.length > 0 && (

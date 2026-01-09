@@ -1,215 +1,279 @@
-import { flextree } from 'd3-flextree';
-import { hierarchy } from 'd3-hierarchy';
+import {
+    forceSimulation,
+    forceLink,
+    forceManyBody,
+    forceCollide,
+    forceX,
+    forceY
+} from 'd3-force';
 
 /**
- * Calculates the X,Y coordinates for all nodes in the mind map.
- * Implements a "Masonry Wall" layout where first-level children are wrapped into columns
- * to fit a target aspect ratio / max-height.
+ * Calculates the X,Y coordinates using a Hybrid Force-Tree Layout.
+ * Robust version with Try/Catch and Optimizations.
  * 
  * @param {Object} rootNode - The root data object of the tree.
  * @param {Object} nodeDimensions - Map of node ID to { width, height }.
- * @param {number} spreadFactor - 0 (Vertical/Standard) to 10 (Wide/Wall). Default 0.
+ * @param {number} spacingFactor - 0 (Tight) to 10 (Loose). Default 5.
  * @returns {Object} { nodes: { [id]: {x,y} }, width, height }
  */
-export const calculateMindMapLayout = (rootNode, nodeDimensions, spreadFactor = 0) => {
-    if (!rootNode) return {};
+export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFactor = 5) => {
+    // 0. Safety Checks
+    if (!rootNode) return { nodes: {}, width: 100, height: 100 };
 
-    // Constants
-    const GAP_X = 60;  // Horizontal gap between columns/nodes
-    const GAP_Y = 10;  // Vertical gap between siblings
+    try {
+        const nodes = {};
 
-    // Map spreadFactor (0-10) to Max Column Height
-    // 0 = Infinity (Standard Single Column)
-    // 10 = Smallest Height (~600px) -> Forces many columns (Wide)
-    const getColumnLimit = (f) => {
-        if (f <= 0) return Infinity; // Pure Vertical
-        // Range: 1 -> 3000px, 10 -> 600px
-        const minH = 600;
-        const maxH = 3000;
-        return maxH - ((f - 1) / 9) * (maxH - minH);
-    };
-    const MAX_COL_HEIGHT = getColumnLimit(spreadFactor);
+        // Config defaults in case of weirdness
+        const safeSpacing = Number.isFinite(spacingFactor) ? spacingFactor : 5;
+        const nodeSep = 20 + (safeSpacing * 2); // Vertical gap
+        const levelSep = 40 + (safeSpacing * 5); // Horizontal gap
 
-    // Helper: Get Node Size including gaps
-    const getNodeSize = (d) => {
-        const id = d.data.id;
-        const dim = nodeDimensions[id] || { width: 100, height: 40 };
-        return [dim.height + GAP_Y, dim.width + GAP_X]; // [y, x] for flextree
-    };
+        // ---------------------------------------------------------
+        // 1. MICRO LAYOUT (Calculate Branch Shapes)
+        // ---------------------------------------------------------
 
-    // Helper: Layout a single subtree (independent of others)
-    // Returns: { positions: {id: {x,y}}, width, height, bounds: {minX...} }
-    const layoutSubtree = (subRootNode) => {
-        const tree = hierarchy(subRootNode);
-        const layout = flextree()
-            .nodeSize(d => getNodeSize(d))
-            .spacing((a, b) => 0);
+        const calculateBranchLayout = (l1Node, direction = 'RIGHT') => {
+            const localNodes = {};
 
-        layout(tree);
+            // Pass 1: Measure and Bubble Up Dimensions
+            const measure = (node) => {
+                const dims = nodeDimensions[node.id] || { width: 100, height: 40 };
+                const w = dims.width || 100;
+                const h = dims.height || 40;
 
-        const subtreePos = {};
-        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                let childBlockHeight = 0;
+                let childBlockWidth = 0;
 
-        tree.each(node => {
-            // Swap X/Y for Horizontal Layout
-            // Flextree X -> Our Y (Vertical Stack)
-            // Flextree Y -> Our X (Depth)
-            const x = node.y;
-            const y = node.x;
+                if (node.children && node.children.length > 0) {
+                    node.children.forEach((child, i) => {
+                        const childLayout = measure(child);
+                        childBlockHeight += childLayout.totalHeight + (i > 0 ? nodeSep : 0);
+                        childBlockWidth = Math.max(childBlockWidth, childLayout.totalWidth);
+                    });
+                }
 
-            subtreePos[node.data.id] = { x, y };
+                const totalHeight = Math.max(h, childBlockHeight);
+                const totalWidth = w + (childBlockWidth > 0 ? levelSep + childBlockWidth : 0);
 
-            if (x < minX) minX = x;
-            if (x > maxX) maxX = x;
-            if (y < minY) minY = y;
-            if (y > maxY) maxY = y;
-        });
+                // Store calculation results for Pass 2
+                localNodes[node.id] = {
+                    itemWidth: w,
+                    itemHeight: h,
+                    totalWidth,
+                    totalHeight,
+                    childBlockHeight,
+                    relX: 0,
+                    relY: 0
+                };
 
-        // Handle case for single node
-        if (minX === Infinity) { minX = 0; maxX = 0; minY = 0; maxY = 0; }
+                return localNodes[node.id];
+            };
 
-        return {
-            positions: subtreePos,
-            width: maxX - minX,
-            height: maxY - minY,
-            bounds: { minX, maxX, minY, maxY }
-        };
-    };
+            const rootLayout = measure(l1Node);
 
-    const positions = {};
-    positions[rootNode.id] = { x: 0, y: 0 }; // Root at center
+            // Pass 2: Position (Flatten) using direct node traversal
+            // Avoids O(N^2) lookup
+            const flatten = (node, x, y) => {
+                // Ensure we have measured info
+                const info = localNodes[node.id];
+                if (!info) return; // Should not happen
 
-    // Process Children
-    const children = rootNode.children || [];
-    const leftChildren = [];
-    const rightChildren = [];
+                // Set relative position for this node
+                info.relX = x;
+                info.relY = y;
 
-    // Split logic
-    const hasExplicitSide = children.some(c => c.side);
-    if (hasExplicitSide) {
-        children.forEach(c => {
-            if (c.side === 'left') leftChildren.push(c);
-            else rightChildren.push(c);
-        });
-    } else {
-        const midpoint = Math.ceil(children.length / 2);
-        rightChildren.push(...children.slice(0, midpoint));
-        leftChildren.push(...children.slice(midpoint));
-    }
+                // Position children
+                if (node.children && node.children.length > 0) {
+                    let currentY = -(info.childBlockHeight / 2);
 
-    // Function to pack subtrees into columns
-    const packSide = (nodeList, direction) => {
-        if (nodeList.length === 0) return;
+                    node.children.forEach(child => {
+                        const childInfo = localNodes[child.id];
+                        if (!childInfo) return;
 
-        // 1. Calculate size of every child subtree
-        const blocks = nodeList.map(node => {
-            const layout = layoutSubtree(node);
+                        const childH = childInfo.totalHeight;
+                        const childY = currentY + (childH / 2);
+
+                        const dir = direction === 'RIGHT' ? 1 : -1;
+                        // Parent is at (x,y). Child X is offset by parent width + gap + child width/2
+                        const childRelX = (info.itemWidth / 2 + levelSep + childInfo.itemWidth / 2) * dir;
+
+                        // Recursive call with ACCUMULATED relative coordinates
+                        // Wait, calculateBranchLayout wants coordinates relative to l1Node (0,0)
+                        // x/y passed in here are relative to l1Node.
+                        // So we pass x + childRelX, y + childY??
+                        // 
+                        // Actually, let's keep the logic simple:
+                        // flatten sets the finalized coordinate relative to l1Node.
+
+                        flatten(child, x + childRelX, y + childY);
+
+                        currentY += childH + nodeSep;
+                    });
+                }
+            };
+
+            flatten(l1Node, 0, 0);
+
             return {
-                node,
-                layout,
-                // Effective block size in the "Wall"
-                h: (layout.bounds.maxY - layout.bounds.minY) + GAP_Y,
-                w: (layout.bounds.maxX - layout.bounds.minX) + GAP_X
+                ...rootLayout,
+                nodes: localNodes // Now contains populated relX/relY
+            };
+        };
+
+        // ---------------------------------------------------------
+        // 2. MACRO LAYOUT (Force Simulation for L1 Islands)
+        // ---------------------------------------------------------
+
+        nodes[rootNode.id] = { x: 0, y: 0 };
+
+        // If no children, early return
+        if (!rootNode.children || rootNode.children.length === 0) {
+            return { nodes, width: 200, height: 200 };
+        }
+
+        const l1Nodes = rootNode.children.map((child, i) => {
+            const isRight = i % 2 === 0;
+            const direction = isRight ? 'RIGHT' : 'LEFT';
+
+            // Safety: Ensure child has ID
+            if (!child.id) child.id = `fallback-${i}`;
+
+            const layout = calculateBranchLayout(child, direction);
+
+            // Radius estimation: Max dimension / 2 + padding
+            const radius = (Math.max(layout.totalWidth, layout.totalHeight) / 2) + 20;
+
+            return {
+                id: child.id,
+                ...layout,
+                direction,
+                // Scatter initial positions
+                x: Math.cos((i / rootNode.children.length) * Math.PI * 2) * 200,
+                y: Math.sin((i / rootNode.children.length) * Math.PI * 2) * 200,
+                radius: radius
             };
         });
 
-        // 2. Pack into Columns
-        // We track columns as a list of { blocks: [], x, width, height }
-        const columns = [{ blocks: [], x: 0, width: 0, height: 0 }];
+        // Create simulation nodes including dummy root
+        const simNodes = [...l1Nodes, { id: 'root', x: 0, y: 0, fx: 0, fy: 0 }];
 
-        blocks.forEach(block => {
-            const current = columns[columns.length - 1];
-
-            // Check if adding this block exceeds max height (and it's not the only block)
-            if (MAX_COL_HEIGHT !== Infinity &&
-                current.blocks.length > 0 &&
-                (current.height + block.h) > MAX_COL_HEIGHT) {
-
-                // Start new column
-                const nextX = current.x + current.width;
-                columns.push({
-                    blocks: [block],
-                    x: nextX,
-                    width: block.w,
-                    height: block.h
-                });
-            } else {
-                // Add to current
-                current.blocks.push(block);
-                current.height += block.h;
-                current.width = Math.max(current.width, block.w);
-            }
-        });
-
-        // 3. Apply positions
-        columns.forEach(col => {
-            // Center the column vertically relative to Root
-            const totalH = col.height - GAP_Y; // Remove last gap
-            let currentY = -(totalH / 2); // Start Y (Top)
-
-            col.blocks.forEach(block => {
-                // Determine shifts
-                // X: Standard column offset + Initial Gap
-                const colXOffset = col.x + GAP_X;
-
-                // Y: currentY aligns with Top of block.
-                // We need to shift block so its Top (minY) is at currentY.
-                const shiftY = currentY - block.layout.bounds.minY;
-
-                // Merge Subtree Positions
-                Object.entries(block.layout.positions).forEach(([id, pos]) => {
-                    let finalX = pos.x + colXOffset;
-                    let finalY = pos.y + shiftY;
-
-                    if (direction === 'left') {
-                        finalX = -finalX; // Mirror X
+        const simulation = forceSimulation(simNodes)
+            .force("center", forceX(0).strength(0.05))
+            .force("centerY", forceY(0).strength(0.05))
+            .force("link", forceLink(l1Nodes.map(d => ({ source: 'root', target: d.id })))
+                .id(d => d.id)
+                .distance(d => {
+                    // Check target existence safely
+                    const target = d.target; // Node object or ID
+                    let h = 100;
+                    // If it's the node object, use totalHeight
+                    if (typeof target === 'object' && target.totalHeight) {
+                        h = target.totalHeight;
+                    }
+                    // If we are looking up by ID in l1Nodes (manual simulation)
+                    else if (typeof target === 'string') {
+                        const found = l1Nodes.find(n => n.id === target);
+                        if (found) h = found.totalHeight;
                     }
 
-                    positions[id] = { x: finalX, y: finalY };
-                });
+                    return 150 + (Math.min(h, 600) * 0.6) + (safeSpacing * 15);
+                })
+                .strength(0.5)
+            )
+            .force("charge", forceManyBody().strength(d => {
+                // Heavier repulsion for larger subtrees
+                return -500 - (d.radius * 3);
+            }))
+            .force("collide", forceCollide().radius(d => d.radius + 30).strength(1));
 
-                // Advance Y in column
-                currentY += block.h;
+        // Run synchronously
+        simulation.stop();
+        const NUM_TICKS = 300;
+        for (let i = 0; i < NUM_TICKS; ++i) {
+            simulation.tick();
+        }
+
+        // ---------------------------------------------------------
+        // 3. COMPOSE (Stitch Micro to Macro)
+        // ---------------------------------------------------------
+
+        l1Nodes.forEach(l1 => {
+            // l1 is now the positioned "Sub-Root"
+            if (!l1.nodes) return;
+
+            Object.keys(l1.nodes).forEach(descendantId => {
+                const relPos = l1.nodes[descendantId];
+                nodes[descendantId] = {
+                    x: l1.x + relPos.relX, // Note: we named it relX in flatten
+                    y: l1.y + relPos.relY
+                };
             });
+
+            // Don't forget the l1 node itself (relative 0,0) - already handled by flatten logic?
+            // Wait, flatten(l1Node, 0, 0) sets l1.nodes[l1Node.id] = {relX:0, relY:0}.
+            // So the loop above handles the l1 node too.
         });
-    };
 
-    packSide(rightChildren, 'right');
-    packSide(leftChildren, 'left');
+        // ---------------------------------------------------------
+        // 4. BOUNDS & NORMALIZE
+        // ---------------------------------------------------------
 
-    return calculateBounds(positions);
-};
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
 
-// Helper to normalize coordinates
-const calculateBounds = (positions) => {
-    let minX = Infinity, maxX = -Infinity;
-    let minY = Infinity, maxY = -Infinity;
-
-    Object.values(positions).forEach(pos => {
-        if (pos.x < minX) minX = pos.x;
-        if (pos.x > maxX) maxX = pos.x;
-        if (pos.y < minY) minY = pos.y;
-        if (pos.y > maxY) maxY = pos.y;
-    });
-
-    // Handle empty map
-    if (minX === Infinity) return { nodes: positions, width: 100, height: 100 };
-
-    const PADDING = 100;
-    const width = (maxX - minX) + (PADDING * 2);
-    const height = (maxY - minY) + (PADDING * 2);
-
-    const shiftedPositions = {};
-    Object.keys(positions).forEach(key => {
-        shiftedPositions[key] = {
-            x: positions[key].x - minX + PADDING,
-            y: positions[key].y - minY + PADDING
+        const checkBounds = (id, x, y) => {
+            const dims = nodeDimensions[id] || { width: 100, height: 40 };
+            const w = dims.width || 100;
+            const h = dims.height || 40;
+            if (x - w / 2 < minX) minX = x - w / 2;
+            if (x + w / 2 > maxX) maxX = x + w / 2;
+            if (y - h / 2 < minY) minY = y - h / 2;
+            if (y + h / 2 > maxY) maxY = y + h / 2;
         };
-    });
 
-    return {
-        nodes: shiftedPositions,
-        width: Math.max(width, 100),
-        height: Math.max(height, 100)
-    };
+        // Add root explicitly
+        checkBounds(rootNode.id, 0, 0);
+
+        Object.keys(nodes).forEach(id => {
+            checkBounds(id, nodes[id].x, nodes[id].y);
+        });
+
+        if (minX === Infinity) return { nodes: {}, width: 100, height: 100 };
+
+        const PADDING = 200;
+        const width = (maxX - minX) + (PADDING * 2);
+        const height = (maxY - minY) + (PADDING * 2);
+
+        const shifted = {};
+
+        // Root
+        const rDims = nodeDimensions[rootNode.id] || { width: 100, height: 40 };
+        shifted[rootNode.id] = {
+            x: 0 - minX + PADDING - (rDims.width / 2),
+            y: 0 - minY + PADDING - (rDims.height / 2)
+        };
+
+        Object.keys(nodes).forEach(id => {
+            // We already centered them in calculation?
+            // No, our calculations yielded CENTER coordinates.
+            // The renderer expects Top-Left?
+            // Usually renderer: style={{ left: node.x, top: node.y }}
+            // If our x/y is center, we should subtract width/2.
+
+            const dims = nodeDimensions[id] || { width: 100, height: 40 };
+            shifted[id] = {
+                x: nodes[id].x - minX + PADDING - (dims.width / 2),
+                y: nodes[id].y - minY + PADDING - (dims.height / 2)
+            };
+        });
+
+        return { nodes: shifted, width, height };
+
+    } catch (error) {
+        console.error("Layout Engine Crash Detected:", error);
+        // Fallback: Place everything at zero or simple list to avoid white screen
+        const fallbackNodes = {};
+        if (rootNode) fallbackNodes[rootNode.id] = { x: 500, y: 500 };
+        return { nodes: fallbackNodes, width: 1000, height: 1000 };
+    }
 };
