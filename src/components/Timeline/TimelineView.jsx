@@ -49,6 +49,9 @@ const TimelineView = () => {
 
                         const handleColorChange = (e) => {
                             const newColor = e.target.value;
+                            // Debug: Confirm event is firing
+                            // alert("Set Color: " + newColor); 
+
                             // Update ALL nodes in this date group
                             dispatch({
                                 type: 'UPDATE_NODE',
