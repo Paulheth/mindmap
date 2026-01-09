@@ -89,11 +89,22 @@ const StyleEditor = () => {
 
                     {isGlobal && (
                         <div className="reset-section" style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #e2e8f0' }}>
+                            <button
+                                onClick={() => {
+                                    localStorage.setItem('userDefaultStyles', JSON.stringify(levelStyles));
+                                    alert("Current styles saved as default for new maps!");
+                                }}
+                                className="save-default-btn"
+                                style={{ width: '100%', background: '#22c55e', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer', marginBottom: '10px' }}
+                            >
+                                Save as Default for New Maps
+                            </button>
+
                             <button onClick={resetManualStyles} className="reset-btn" style={{ width: '100%', background: '#ff4d4f', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer' }}>
                                 Reset All Manual Overrides
                             </button>
                             <p style={{ fontSize: '0.75rem', color: '#666', marginTop: 5 }}>
-                                Use this if changes aren't applying to existing nodes.
+                                Use Reset if changes aren't applying to existing nodes.
                             </p>
                         </div>
                     )}
