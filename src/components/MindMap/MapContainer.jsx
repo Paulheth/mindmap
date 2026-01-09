@@ -137,6 +137,44 @@ const MapContainer = () => {
         }
     };
 
+    const handleWheel = (e) => {
+        // e.preventDefault(); // React synthetic event might not support this for passive listeners
+        // But overflow:hidden prevents scrolling anyway.
+
+        const scaleSensitivity = 0.001; // Adjust for trackpad/mouse
+        const delta = -e.deltaY;
+        const currentZoom = state.zoom || 1;
+
+        // Calculate new zoom
+        // limit change per event to avoid huge jumps
+        let newZoom = currentZoom + delta * scaleSensitivity * currentZoom;
+        newZoom = Math.min(Math.max(0.1, newZoom), 5); // Clamp 0.1 to 5
+
+        if (containerRef.current) {
+            const containerRect = containerRef.current.getBoundingClientRect();
+            const mouseX = e.clientX - containerRect.left;
+            const mouseY = e.clientY - containerRect.top;
+
+            // PanNew = Mouse - (Mouse - PanOld) * (ZoomNew / ZoomOld)
+            const currentPanX = localPan.x;
+            const currentPanY = localPan.y;
+
+            const ratio = newZoom / currentZoom;
+
+            const newPanX = mouseX - (mouseX - currentPanX) * ratio;
+            const newPanY = mouseY - (mouseY - currentPanY) * ratio;
+
+            const newPan = { x: newPanX, y: newPanY };
+
+            // Update Visuals
+            setLocalPan(newPan);
+
+            // Update Context
+            dispatch({ type: 'SET_ZOOM', payload: newZoom });
+            dispatch({ type: 'SET_PAN', payload: newPan });
+        }
+    };
+
     return (
         <div
             className="map-container"
@@ -145,6 +183,7 @@ const MapContainer = () => {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
+            onWheel={handleWheel}
         >
             <div
                 className={`map-canvas`}
