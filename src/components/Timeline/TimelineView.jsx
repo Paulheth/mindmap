@@ -142,4 +142,45 @@ const TimelineView = () => {
     );
 };
 
-export default TimelineView;
+const EditableDate = ({ date, color, onDateChange }) => {
+    const inputRef = React.useRef(null);
+
+    const handleClick = () => {
+        if (inputRef.current) {
+            try {
+                inputRef.current.showPicker();
+            } catch (err) {
+                // Fallback for browsers not supporting showPicker
+                inputRef.current.focus();
+                inputRef.current.click();
+            }
+        }
+    };
+
+    return (
+        <div
+            className="timeline-date"
+            style={{ color: color, cursor: 'pointer', zIndex: 10 }}
+            onClick={handleClick}
+        >
+            {date}
+            <input
+                ref={inputRef}
+                type="date"
+                onChange={onDateChange} // Changed to onChange for standard picker behavior
+                onInput={onDateChange} // Input for immediate
+                value={date}
+                style={{
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    width: 0, // Hide visual footprint
+                    height: 0,
+                    opacity: 0,
+                    border: 0,
+                    padding: 0
+                }}
+            />
+        </div>
+    );
+};
