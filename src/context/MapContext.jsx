@@ -184,20 +184,30 @@ const mapReducer = (state, action) => {
 
         case 'LOAD_MAP': {
             const loadedState = action.payload;
-            // Ensure levelStyles exist (backwards compatibility or MM import)
-            if (!loadedState.levelStyles) {
-                loadedState.levelStyles = initialState.levelStyles;
-            }
-            // Auto-balance on load if it's a fresh import (we assume LOAD_MAP implies import/open)
-            if (loadedState.root) {
-                balanceTree(loadedState.root);
-            }
-            return {
-                ...loadedState,
-                selectedIds: ['root'],
-                editingId: null,
-                editingStyleLevel: null
+
+            // Merge loaded state on top of initialState to ensure all required keys (like autoSave, levelStyles) exist.
+            // This prevents crashes if the imported file/parser lacks newer state properties.
+            const newState = {
+                ...initialState,
+                ...loadedState
             };
+
+            // Ensure levelStyles fall back to defaults if not present (redundant with spread above but explicitly safe)
+            if (!newState.levelStyles) {
+                newState.levelStyles = initialState.levelStyles;
+            }
+
+            // Auto-balance on load if it's a fresh import
+            if (newState.root) {
+                balanceTree(newState.root);
+            }
+
+            // Reset interaction state
+            newState.selectedIds = ['root'];
+            newState.editingId = null;
+            newState.editingStyleLevel = null;
+
+            return newState;
         }
 
         case 'UPDATE_NODE_STYLE': {
