@@ -68,9 +68,31 @@ const TimelineView = () => {
                             });
                         };
 
+                        const handleDateChange = (e) => {
+                            const newDate = e.target.value;
+                            if (newDate) {
+                                dispatch({
+                                    type: 'UPDATE_NODE',
+                                    payload: {
+                                        ids: group.nodes.map(n => n.id),
+                                        updates: { date: newDate }
+                                    }
+                                });
+                            }
+                        };
+
                         return (
                             <div key={group.date} className="timeline-item">
-                                <div className="timeline-date" style={{ color: groupColor }}>{group.date}</div>
+                                {/* Editable Date Label */}
+                                <label className="timeline-date-wrapper" style={{ position: 'relative', cursor: 'pointer', marginBottom: 8, display: 'inline-block' }}>
+                                    <div className="timeline-date" style={{ color: groupColor, marginBottom: 0 }}>{group.date}</div>
+                                    <input
+                                        type="date"
+                                        onInput={handleDateChange}
+                                        value={group.date}
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
+                                    />
+                                </label>
 
                                 <label className="timeline-marker-wrapper" style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <div
