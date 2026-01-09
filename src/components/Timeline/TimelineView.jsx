@@ -44,13 +44,11 @@ const TimelineView = () => {
 
                     {timelineGroups.map((group, index) => {
                         // Use the first node's dateColor as the representative color for the timeline marker
-                        // Default to Blue to verify changes are active
+                        // Default to Blue if no color set
                         const groupColor = group.nodes[0]?.dateColor || '#3b82f6';
 
                         const handleColorChange = (e) => {
                             const newColor = e.target.value;
-                            // Debug: Confirm event is firing
-                            // alert("Set Color: " + newColor); 
 
                             // Update ALL nodes in this date group
                             dispatch({

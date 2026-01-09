@@ -87,7 +87,6 @@ const mapReducer = (state, action) => {
             targets.forEach(targetId => {
                 if (!targetId) return;
                 const node = findNode(newState.root, targetId);
-                // alert(`Updating Node ${targetId} with ${JSON.stringify(updates)}`); // Debug
                 if (node) {
                     Object.assign(node, updates);
                 }
