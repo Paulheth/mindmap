@@ -19,6 +19,7 @@ export const initialState = {
     editingId: null, // Track which node is being edited
     editingNoteId: null, // Track which node's note is being edited
     links: [],
+    pan: { x: 0, y: 0 },
     zoom: 1,
     view: 'map',
     horizontalSpread: 0, // 0 (Vertical) to 5 (Wide) -- Deprecated but kept for compatibility?
@@ -257,6 +258,9 @@ const mapReducer = (state, action) => {
                 ...state,
                 links: state.links.filter(l => l.id !== action.payload)
             };
+
+        case 'SET_PAN':
+            return { ...state, pan: action.payload };
 
         case 'SET_ZOOM':
             return { ...state, zoom: action.payload };

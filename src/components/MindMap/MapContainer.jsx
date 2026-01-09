@@ -88,15 +88,75 @@ const MapContainer = () => {
         );
     }
 
+    // Panning Logic (Local state for performance, sync to context on end)
+    const [localPan, setLocalPan] = useState(state.pan || { x: 0, y: 0 });
+    const isDragging = useRef(false);
+    const lastMousePos = useRef({ x: 0, y: 0 });
+
+    // Sync local pan if context changes external to dragging (e.g. load)
+    useEffect(() => {
+        if (!isDragging.current && state.pan) {
+            setLocalPan(state.pan);
+        }
+    }, [state.pan]);
+
+    const handleMouseDown = (e) => {
+        // Only trigger on left click and if clicking background properties
+        if (e.button !== 0) return;
+        // Allow dragging if target is the container or canvas directly
+        // (Prevent dragging when clicking inside a node)
+        // Check if event target is part of a node-card? 
+        if (e.target.closest('.node-content') || e.target.closest('.note-editor')) return;
+
+        isDragging.current = true;
+        lastMousePos.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleMouseMove = (e) => {
+        if (!isDragging.current) return;
+
+        const dx = e.clientX - lastMousePos.current.x;
+        const dy = e.clientY - lastMousePos.current.y;
+
+        setLocalPan(prev => ({ x: prev.x + dx, y: prev.y + dy }));
+        lastMousePos.current = { x: e.clientX, y: e.clientY };
+    };
+
+    const handleMouseUp = () => {
+        if (isDragging.current) {
+            isDragging.current = false;
+            // Commit to context
+            dispatch({ type: 'SET_PAN', payload: localPan });
+        }
+    };
+
+    const handleMouseLeave = () => {
+        if (isDragging.current) {
+            isDragging.current = false;
+            dispatch({ type: 'SET_PAN', payload: localPan });
+        }
+    };
+
     return (
-        <div className="map-container" ref={containerRef}>
+        <div
+            className="map-container"
+            ref={containerRef}
+            onMouseDown={handleMouseDown}
+            onMouseMove={handleMouseMove}
+            onMouseUp={handleMouseUp}
+            onMouseLeave={handleMouseLeave}
+        >
             <div
-                className={`map-canvas`} // Layout is now absolute, removed responsive classes
+                className={`map-canvas`}
                 style={{
-                    transform: `scale(${state.zoom || 1})`,
-                    position: 'relative', // Anchor for absolute children
-                    width: canvasSize.width, // Explicit size from layout engine
-                    height: canvasSize.height
+                    transform: `translate(${localPan.x}px, ${localPan.y}px) scale(${state.zoom || 1})`,
+                    position: 'relative',
+                    width: canvasSize.width,
+                    height: canvasSize.height,
+                    transformOrigin: 'center center' // Zoom from center? Or 0 0? Usually 0 0 for pan + zoom ease
+                    // With FlexTree layout, center might be better, but let's test.
+                    // If zoom is handled by simple scale, transform origin matters.
+                    // Default logic usually assumes 0 0 if we translate manually.
                 }}
             >
                 <ConnectionsLayer />
