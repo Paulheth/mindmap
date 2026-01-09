@@ -84,15 +84,24 @@ const TimelineView = () => {
                         return (
                             <div key={group.date} className="timeline-item">
                                 {/* Editable Date Label */}
-                                <label className="timeline-date-wrapper" style={{ position: 'relative', cursor: 'pointer', marginBottom: 8, display: 'inline-block' }}>
-                                    <div className="timeline-date" style={{ color: groupColor, marginBottom: 0 }}>{group.date}</div>
+                                <div className="timeline-date" style={{ color: groupColor, cursor: 'pointer', zIndex: 10 }}>
+                                    {group.date}
                                     <input
                                         type="date"
                                         onInput={handleDateChange}
                                         value={group.date}
-                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
+                                        style={{
+                                            position: 'absolute',
+                                            top: 0,
+                                            left: 0,
+                                            width: '100%',
+                                            height: '100%',
+                                            opacity: 0,
+                                            cursor: 'pointer',
+                                            zIndex: 20
+                                        }}
                                     />
-                                </label>
+                                </div>
 
                                 <label className="timeline-marker-wrapper" style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <div
