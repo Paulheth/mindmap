@@ -47,18 +47,21 @@
 
 .note-textarea {
     width: 100%;
-    min-height: 120px;
-    padding: 12px;
+    min-height: 80px;
+    /* Reduced specific height */
+    padding: 10px;
     border: 1px solid #cbd5e1;
-    border-radius: 8px;
+    border-radius: 6px;
     font-family: inherit;
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 13px;
+    line-height: 1.4;
     resize: vertical;
     outline: none;
     transition: border-color 0.2s;
     background: #fafafa;
     color: #334155;
+    box-sizing: border-box;
+    /* Prevent overflow */
 }
 
 .note-textarea:focus {
