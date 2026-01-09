@@ -27,6 +27,12 @@
   color: #334155;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
   z-index: 2;
+
+  /* Flex column for vertical stacking of Title and Date */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
 }
 
 .node-content:hover {
@@ -54,13 +60,19 @@
 
 
 .node-date {
-  font-size: 0.7em;
-  color: #64748b;
-  margin-top: 2px;
-  background: #f1f5f9;
-  padding: 0 4px;
-  border-radius: 4px;
+  font-size: 0.65em;
+  color: #ffffff;
+  /* White text by default for contrast against colored bg */
+  margin-top: 4px;
+  background: #cbd5e1;
+  /* Default if no color set */
+  padding: 2px 8px;
+  border-radius: 12px;
+  /* Pill shape */
   display: inline-block;
+  font-weight: 500;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  min-width: 60px;
 }
 
 .collapse-btn {

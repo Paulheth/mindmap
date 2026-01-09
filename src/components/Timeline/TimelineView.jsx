@@ -42,24 +42,55 @@ const TimelineView = () => {
                     {/* Start Line Lead-in */}
                     <div style={{ minWidth: 50, height: 4, background: '#334155' }}></div>
 
-                    {timelineGroups.map((group, index) => (
-                        <div key={group.date} className="timeline-item">
-                            <div className="timeline-date">{group.date}</div>
-                            <div className="timeline-marker"></div>
-                            <div className="timeline-connector"></div>
-                            <div className="timeline-stack">
-                                {group.nodes.map(node => (
+                    {timelineGroups.map((group, index) => {
+                        // Use the first node's dateColor as the representative color for the timeline marker
+                        const groupColor = group.nodes[0]?.dateColor || '#334155';
+
+                        const handleColorChange = (e) => {
+                            const newColor = e.target.value;
+                            // Update ALL nodes in this date group
+                            dispatch({
+                                type: 'UPDATE_NODE',
+                                payload: {
+                                    ids: group.nodes.map(n => n.id),
+                                    updates: { dateColor: newColor }
+                                }
+                            });
+                        };
+
+                        return (
+                            <div key={group.date} className="timeline-item">
+                                <div className="timeline-date" style={{ color: groupColor }}>{group.date}</div>
+
+                                <label className="timeline-marker-wrapper" style={{ cursor: 'pointer' }}>
                                     <div
-                                        key={node.id}
-                                        className="timeline-card"
-                                        style={{ borderColor: node.style?.backgroundColor }}
-                                    >
-                                        <strong>{node.text}</strong>
-                                    </div>
-                                ))}
+                                        className="timeline-marker"
+                                        style={{ backgroundColor: groupColor, borderColor: groupColor }}
+                                        title="Click to set color for this date"
+                                    ></div>
+                                    <input
+                                        type="color"
+                                        onChange={handleColorChange}
+                                        value={groupColor}
+                                        style={{ display: 'none' }}
+                                    />
+                                </label>
+
+                                <div className="timeline-connector" style={{ backgroundColor: groupColor }}></div>
+                                <div className="timeline-stack">
+                                    {group.nodes.map(node => (
+                                        <div
+                                            key={node.id}
+                                            className="timeline-card"
+                                            style={{ borderColor: node.style?.backgroundColor, borderLeftWidth: 4 }}
+                                        >
+                                            <strong>{node.text}</strong>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
-                        </div>
-                    ))}
+                        );
+                    })}
 
 
                     {/* End Line Lead-out */}

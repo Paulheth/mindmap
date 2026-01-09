@@ -139,7 +139,14 @@ const Node = ({ node, positions, onReportSize, level = 0 }) => {
                 ) : (
                     <span className="node-text">{node.text}</span>
                 )}
-                {node.date && <div className="node-date">{node.date}</div>}
+                {node.date && (
+                    <div
+                        className="node-date"
+                        style={node.dateColor ? { backgroundColor: node.dateColor } : {}}
+                    >
+                        {node.date}
+                    </div>
+                )}
 
                 {/* Note Indicator */}
                 {node.note && (
