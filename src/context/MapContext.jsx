@@ -184,11 +184,20 @@ const mapReducer = (state, action) => {
 
         case 'LOAD_MAP': {
             const loadedState = action.payload;
+            // Ensure levelStyles exist (backwards compatibility or MM import)
+            if (!loadedState.levelStyles) {
+                loadedState.levelStyles = initialState.levelStyles;
+            }
             // Auto-balance on load if it's a fresh import (we assume LOAD_MAP implies import/open)
             if (loadedState.root) {
                 balanceTree(loadedState.root);
             }
-            return { ...loadedState, selectedIds: ['root'] };
+            return {
+                ...loadedState,
+                selectedIds: ['root'],
+                editingId: null,
+                editingStyleLevel: null
+            };
         }
 
         case 'UPDATE_NODE_STYLE': {

@@ -20,13 +20,7 @@ export const parseMMFile = (xmlContent) => {
         const folded = xmlNode.getAttribute("FOLDED") === "true";
         const position = xmlNode.getAttribute("POSITION") || xmlNode.getAttribute("position");
 
-        const style = {
-            backgroundColor: '#ffffff',
-            color: '#000000',
-            fontSize: 14,
-            fontWeight: 'normal',
-            fontStyle: 'normal'
-        };
+        const style = {};
 
         // Try to capture some basic styling
         if (xmlNode.getAttribute("COLOR")) {
@@ -63,14 +57,9 @@ export const parseMMFile = (xmlContent) => {
 
     // Ensure root specific styling/defaults
     rootNode.text = rootNode.text || "Central Topic";
-    // Override root style to default blue if it wasn't specified, or keep if it was? 
-    // Let's reset root style to be consistent with our app unless the file specified something.
-    if (!rootXmlNode.getAttribute("BACKGROUND_COLOR")) {
-        rootNode.style.backgroundColor = '#2563eb';
-        rootNode.style.color = '#ffffff';
-        rootNode.style.fontSize = 24;
-        rootNode.style.fontWeight = 'bold';
-    }
+    // We do NOT hardcode styles here anymore. 
+    // The MapContext will inject default levelStyles, and the Root node will inherit Level 0 style (Blue).
+    // Unless the XML explicitly had attributes, which are captured above.
 
     return {
         root: rootNode,
