@@ -62,7 +62,7 @@ const TimelineView = () => {
                             <div key={group.date} className="timeline-item">
                                 <div className="timeline-date" style={{ color: groupColor }}>{group.date}</div>
 
-                                <label className="timeline-marker-wrapper" style={{ cursor: 'pointer' }}>
+                                <label className="timeline-marker-wrapper" style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                                     <div
                                         className="timeline-marker"
                                         style={{ backgroundColor: groupColor, borderColor: groupColor }}
@@ -72,7 +72,7 @@ const TimelineView = () => {
                                         type="color"
                                         onChange={handleColorChange}
                                         value={groupColor}
-                                        style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', width: 0, height: 0 }}
+                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer' }}
                                     />
                                 </label>
 
