@@ -72,7 +72,7 @@ const TimelineView = () => {
                                         type="color"
                                         onChange={handleColorChange}
                                         value={groupColor}
-                                        style={{ display: 'none' }}
+                                        style={{ opacity: 0, position: 'absolute', pointerEvents: 'none', width: 0, height: 0 }}
                                     />
                                 </label>
 

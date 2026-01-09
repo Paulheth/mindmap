@@ -81,12 +81,14 @@ const mapReducer = (state, action) => {
 
         case 'UPDATE_NODE': {
             const newState = deepClone(state);
-            const idsToUpdate = action.payload.ids || [action.payload.id];
+            const { ids, id, updates } = action.payload;
+            const targets = ids || [id];
 
-            idsToUpdate.forEach(id => {
-                const node = findNode(newState.root, id);
+            targets.forEach(targetId => {
+                if (!targetId) return;
+                const node = findNode(newState.root, targetId);
                 if (node) {
-                    Object.assign(node, action.payload.updates);
+                    Object.assign(node, updates);
                 }
             });
             return newState;
