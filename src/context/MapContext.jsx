@@ -234,9 +234,16 @@ const mapReducer = (state, action) => {
 
         case 'ADD_LINK': {
             const { from, to } = action.payload;
-            if (state.links.some(l => (l.from === from && l.to === to) || (l.from === to && l.to === from))) {
-                return state; // Duplicate
+            const existingIndex = state.links.findIndex(l => (l.from === from && l.to === to) || (l.from === to && l.to === from));
+
+            if (existingIndex >= 0) {
+                // Remove existing link (Toggle OFF)
+                const newLinks = [...state.links];
+                newLinks.splice(existingIndex, 1);
+                return { ...state, links: newLinks };
             }
+
+            // Add new link (Toggle ON)
             return {
                 ...state,
                 links: [...state.links, { id: uuidv4(), from, to, style: 'dashed', color: 'red' }]
