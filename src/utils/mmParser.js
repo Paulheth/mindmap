@@ -42,8 +42,8 @@ export const parseMMFile = (xmlContent) => {
         };
 
         // Recursive children
-        // Use .children to get direct element children, but filter for "node" tag
-        const childNodes = Array.from(xmlNode.children).filter(child => child.tagName === 'node');
+        // Use .children to get direct element children, but filter for "node" tag (case-insensitive)
+        const childNodes = Array.from(xmlNode.children).filter(child => child.tagName.toLowerCase() === 'node');
 
         childNodes.forEach(childXml => {
             node.children.push(parseNode(childXml));
@@ -54,6 +54,7 @@ export const parseMMFile = (xmlContent) => {
 
     const rootNode = parseNode(rootXmlNode);
     rootNode.id = 'root'; // Force ID for compatibility
+    rootNode.isCollapsed = false; // Always expand root on load, regardless of file state
 
     // Ensure root specific styling/defaults
     rootNode.text = rootNode.text || "Central Topic";
