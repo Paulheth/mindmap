@@ -70,7 +70,19 @@ const TimelineView = () => {
 
                         const handleDateChange = (e) => {
                             const newDate = e.target.value;
-                            if (newDate) {
+                            if (!newDate) {
+                                // Clear action
+                                if (window.confirm("Are you sure you want to remove dates from all these nodes and remove them from the timeline?")) {
+                                    dispatch({
+                                        type: 'UPDATE_NODE',
+                                        payload: {
+                                            ids: group.nodes.map(n => n.id),
+                                            updates: { date: null }
+                                        }
+                                    });
+                                }
+                            } else {
+                                // Update action
                                 dispatch({
                                     type: 'UPDATE_NODE',
                                     payload: {
