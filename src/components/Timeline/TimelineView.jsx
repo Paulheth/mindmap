@@ -166,8 +166,7 @@ const EditableDate = ({ date, color, onDateChange }) => {
             <input
                 ref={inputRef}
                 type="date"
-                onChange={onDateChange} // Changed to onChange for standard picker behavior
-                onInput={onDateChange} // Input for immediate
+                onChange={onDateChange}
                 value={date}
                 style={{
                     position: 'absolute',
