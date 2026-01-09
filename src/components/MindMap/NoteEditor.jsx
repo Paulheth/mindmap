@@ -70,8 +70,8 @@ const NoteEditor = ({ position = { x: 0, y: 0 } }) => {
         <div
             className="note-editor-container"
             style={{
-                left: position.x + 40, // Offset to the right of the node
-                top: position.y - 20   // Align near top
+                left: position.x + 15, // Very close offset
+                top: position.y - 10   // Slight top alignment
             }}
             onClick={(e) => e.stopPropagation()} // Prevent map interaction
             onWheel={(e) => e.stopPropagation()}
