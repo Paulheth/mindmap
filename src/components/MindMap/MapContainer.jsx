@@ -192,7 +192,7 @@ const MapContainer = () => {
                     position: 'relative',
                     width: canvasSize.width,
                     height: canvasSize.height,
-                    transformOrigin: 'center center' // Zoom from center? Or 0 0? Usually 0 0 for pan + zoom ease
+                    transformOrigin: '0 0' // Must be 0 0 for Top-Left based pan/zoom math to work correctly
                     // With FlexTree layout, center might be better, but let's test.
                     // If zoom is handled by simple scale, transform origin matters.
                     // Default logic usually assumes 0 0 if we translate manually.
