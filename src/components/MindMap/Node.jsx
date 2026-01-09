@@ -106,19 +106,6 @@ const Node = ({ node, positions, onReportSize, level = 0 }) => {
 
     return (
         <div className={`node-wrapper ${isRoot ? 'root' : ''}`}>
-            <div
-                className="node-border-target"
-                style={{
-                    position: 'absolute',
-                    top: -6, left: -6, right: -6, bottom: -6,
-                    border: '2px solid transparent', // Invisible 2px border + 4px extra space from top/left settings
-                    zIndex: 9,
-                    borderRadius: 8
-                }}
-                title={`Double Check Border to Edit Level ${level} Style`}
-                onDoubleClick={handleBorderDoubleClick}
-            ></div>
-
             {/* Node Content (The visual box) */}
             <div
                 ref={contentRef}

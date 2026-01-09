@@ -8,13 +8,7 @@ export const initialNode = {
     id: 'root',
     text: 'Central Topic',
     date: null,
-    style: {
-        backgroundColor: '#2563eb', // Blue back fill
-        color: '#ffffff',           // White text
-        fontSize: 24,               // Larger font (~14px * 1.7)
-        fontWeight: 'bold',
-        fontStyle: 'normal'
-    },
+    style: {},
     isCollapsed: false,
     children: []
 };
@@ -102,10 +96,7 @@ const mapReducer = (state, action) => {
                     id: uuidv4(),
                     text: 'New Node',
                     date: null,
-                    style: {
-                        backgroundColor: '#ffffff', color: '#000000', fontSize: 14,
-                        fontWeight: 'normal', fontStyle: 'normal'
-                    },
+                    style: {}, // Empty to inherit level style
                     children: []
                 };
                 if (!parent.children) parent.children = [];
@@ -123,10 +114,7 @@ const mapReducer = (state, action) => {
                 id: uuidv4(),
                 text: 'New Sibling',
                 date: null,
-                style: {
-                    backgroundColor: '#ffffff', color: '#000000', fontSize: 14,
-                    fontWeight: 'normal', fontStyle: 'normal'
-                },
+                style: {}, // Empty to inherit level style
                 children: []
             };
 
@@ -314,6 +302,17 @@ const mapReducer = (state, action) => {
 
         case 'SET_EDITING_STYLE_LEVEL':
             return { ...state, editingStyleLevel: action.payload };
+
+        case 'RESET_ALL_NODE_STYLES': {
+            const newState = deepClone(state);
+            const traverseAndReset = (node) => {
+                if (!node) return;
+                node.style = {}; // Clear manual overrides
+                if (node.children) node.children.forEach(traverseAndReset);
+            };
+            traverseAndReset(newState.root);
+            return newState;
+        }
 
         default:
             return state;

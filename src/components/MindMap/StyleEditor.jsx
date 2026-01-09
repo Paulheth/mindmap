@@ -1,25 +1,23 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useMap } from '../../context/MapContext';
 import './StyleEditor.css';
 
 const StyleEditor = () => {
     const { state, dispatch } = useMap();
     const { editingStyleLevel, levelStyles } = state;
+    const [activeTab, setActiveTab] = useState(0); // For Global mode
 
     if (editingStyleLevel === null) return null;
 
-    const currentStyle = levelStyles[editingStyleLevel] || {};
-    // Local state for edits? Or live update? 
-    // Live update is cooler given "Dynamic".
-    // But local state is safer for "Cancel". 
-    // Let's do live but with a close button. User can undo? No undo stack yet. 
-    // I'll stick to live updates as they are instant feedback.
+    const isGlobal = editingStyleLevel === 'GLOBAL';
+    const targetLevel = isGlobal ? activeTab : editingStyleLevel;
+    const currentStyle = levelStyles[targetLevel] || {};
 
     const update = (key, value) => {
         dispatch({
             type: 'UPDATE_LEVEL_STYLE',
             payload: {
-                level: editingStyleLevel,
+                level: targetLevel,
                 style: { [key]: value }
             }
         });
@@ -27,14 +25,36 @@ const StyleEditor = () => {
 
     const close = () => dispatch({ type: 'SET_EDITING_STYLE_LEVEL', payload: null });
 
+    const resetManualStyles = () => {
+        if (confirm("This will remove all manual style overrides from ALL nodes, forcing them to use the level templates. Continue?")) {
+            dispatch({ type: 'RESET_ALL_NODE_STYLES' });
+        }
+    };
+
     return (
         <div className="style-editor-overlay">
-            <div className="style-editor-modal">
+            <div className={`style-editor-modal ${isGlobal ? 'global-mode' : ''}`}>
                 <div className="style-editor-header">
-                    <h3>Edit Style: Level {editingStyleLevel}</h3>
+                    <h3>{isGlobal ? 'Node Style Setup' : `Edit Style: Level ${editingStyleLevel}`}</h3>
                     <button onClick={close} className="close-btn">&times;</button>
                 </div>
+
+                {isGlobal && (
+                    <div className="style-tabs">
+                        {[0, 1, 2, 3, 4, 5].map(lvl => (
+                            <button
+                                key={lvl}
+                                className={`tab-btn ${activeTab === lvl ? 'active' : ''}`}
+                                onClick={() => setActiveTab(lvl)}
+                            >
+                                {lvl === 0 ? 'Root' : `Lvl ${lvl}`}
+                            </button>
+                        ))}
+                    </div>
+                )}
+
                 <div className="style-editor-body">
+                    <h4>{isGlobal ? (activeTab === 0 ? 'Central Topic' : `Level ${activeTab}`) : ''}</h4>
                     <div className="control-group">
                         <label>Background Color</label>
                         <div className="color-preview">
@@ -66,7 +86,19 @@ const StyleEditor = () => {
                             onChange={(e) => update('fontSize', parseInt(e.target.value))}
                         />
                     </div>
+
+                    {isGlobal && (
+                        <div className="reset-section" style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #e2e8f0' }}>
+                            <button onClick={resetManualStyles} className="reset-btn" style={{ width: '100%', background: '#ff4d4f', color: 'white', border: 'none', padding: '10px', borderRadius: '4px', cursor: 'pointer' }}>
+                                Reset All Manual Overrides
+                            </button>
+                            <p style={{ fontSize: '0.75rem', color: '#666', marginTop: 5 }}>
+                                Use this if changes aren't applying to existing nodes.
+                            </p>
+                        </div>
+                    )}
                 </div>
+
                 <div className="style-editor-footer">
                     <button onClick={close} className="done-btn">Done</button>
                 </div>

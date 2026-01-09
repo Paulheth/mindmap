@@ -19,6 +19,10 @@
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+.style-editor-modal.global-mode {
+    width: 400px;
+}
+
 .style-editor-header {
     display: flex;
     justify-content: space-between;
@@ -40,6 +44,30 @@
     color: #64748b;
     padding: 0;
     line-height: 1;
+}
+
+.style-tabs {
+    display: flex;
+    gap: 5px;
+    flex-wrap: wrap;
+    margin-bottom: 20px;
+    border-bottom: 1px solid #e2e8f0;
+    padding-bottom: 10px;
+}
+
+.tab-btn {
+    background: #f1f5f9;
+    border: none;
+    padding: 6px 10px;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    color: #64748b;
+}
+
+.tab-btn.active {
+    background: #2563eb;
+    color: white;
 }
 
 .control-group {
@@ -95,4 +123,8 @@
 
 .done-btn:hover {
     background: #1d4ed8;
+}
+
+.reset-btn:hover {
+    background-color: #d9363e !important;
 }
