@@ -39,7 +39,7 @@ const MapContainer = () => {
 
     useEffect(() => {
         const handleKeyDown = (e) => {
-            if (e.target.tagName === 'INPUT') return;
+            if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
 
             switch (e.key) {
                 case 'Tab':
@@ -207,9 +207,22 @@ const MapContainer = () => {
                     onReportSize={handleReportSize}
                 />
                 {/* Note Editor Popover */}
-                {state.editingNoteId && nodePositions[state.editingNoteId] && (
-                    <NoteEditor position={nodePositions[state.editingNoteId]} />
-                )}
+                {state.editingNoteId && nodePositions[state.editingNoteId] && (() => {
+                    const nodeId = state.editingNoteId;
+                    const pos = nodePositions[nodeId];
+                    const dims = nodeDimensions[nodeId] || { width: 100, height: 40 };
+                    // pos.y is horizontal (left/right) in this swapped layout system?
+                    // Checked Node uses transform(y, x).
+                    // So 'left' = y. 
+                    // Nodes are centered at y? Or y is left edge?
+                    // d3-flextree usually layout(root) returns coordinates of center.
+                    // Let's assume center for now. If it looks off, we adjust.
+                    // Editor Left = Node Center X (pos.y) + Half Width + Gap
+                    const editorX = pos.y + (dims.width / 2) + 5;
+                    const editorY = pos.x - 20; // Slightly above center Y
+
+                    return <NoteEditor position={{ x: editorX, y: editorY }} />;
+                })()}
             </div>
             <StyleEditor />
         </div >
