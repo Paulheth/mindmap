@@ -3,7 +3,7 @@ import { useMap } from '../../context/MapContext';
 import './TimelineView.css';
 
 const TimelineView = () => {
-    const { state } = useMap();
+    const { state, dispatch } = useMap();
 
     // Flatten nodes and group by date
     const timelineGroups = useMemo(() => {
