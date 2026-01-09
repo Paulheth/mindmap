@@ -8,15 +8,23 @@ const TimelineView = () => {
     // Flatten nodes and group by date
     const timelineGroups = useMemo(() => {
         const groups = {};
-        const traverse = (node) => {
+        const traverse = (node, level = 0) => {
+            // Resolve effective style
+            const levelStyle = state.levelStyles?.[Math.min(level, 5)] || {};
+            const effectiveStyle = {
+                ...levelStyle,
+                ...node.style,
+            };
+
             if (node.date) {
                 if (!groups[node.date]) {
                     groups[node.date] = [];
                 }
-                groups[node.date].push(node);
+                // Store node with resolved style for display
+                groups[node.date].push({ ...node, effectiveStyle });
             }
             if (node.children) {
-                node.children.forEach(traverse);
+                node.children.forEach(child => traverse(child, level + 1));
             }
         };
         traverse(state.root);
@@ -28,7 +36,7 @@ const TimelineView = () => {
                 date,
                 nodes: groups[date]
             }));
-    }, [state.root]);
+    }, [state.root, state.levelStyles]);
 
     return (
         <div className="timeline-view">
@@ -84,7 +92,7 @@ const TimelineView = () => {
                                         <div
                                             key={node.id}
                                             className="timeline-card"
-                                            style={{ borderColor: node.style?.backgroundColor, borderLeftWidth: 4 }}
+                                            style={{ borderColor: node.effectiveStyle?.backgroundColor, borderLeftWidth: 4 }}
                                         >
                                             <strong>{node.text}</strong>
                                         </div>
