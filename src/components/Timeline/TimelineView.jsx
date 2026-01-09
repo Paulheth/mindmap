@@ -184,3 +184,5 @@ const EditableDate = ({ date, color, onDateChange }) => {
         </div>
     );
 };
+
+export default TimelineView;
