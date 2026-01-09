@@ -42,12 +42,16 @@ export const parseMMFile = (xmlContent) => {
         };
 
         // Recursive children
-        // Use .children to get direct element children, but filter for "node" tag (case-insensitive)
-        const childNodes = Array.from(xmlNode.children).filter(child => child.tagName.toLowerCase() === 'node');
+        // Use childNodes to be safe across XML DOM implementations
+        if (xmlNode.childNodes) {
+            for (let i = 0; i < xmlNode.childNodes.length; i++) {
+                const child = xmlNode.childNodes[i];
+                if (child.nodeType === 1 && child.tagName.toLowerCase() === 'node') {
+                    node.children.push(parseNode(child));
+                }
+            }
+        }
 
-        childNodes.forEach(childXml => {
-            node.children.push(parseNode(childXml));
-        });
 
         return node;
     };
