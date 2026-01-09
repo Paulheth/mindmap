@@ -162,7 +162,7 @@ const ConnectionsLayer = () => {
                             d: `M ${start.x} ${start.y} L ${end.x} ${end.y}`, // Straight line
                             type: 'duplicate',
                             style: 'dotted',
-                            color: '#94a3b8' // Slate 400 (Lighter than 500, visible)
+                            color: '#cbd5e1' // Slate 300 (Lighter than branches, but width 2px keeps it visible)
                         });
                     }
                 }
