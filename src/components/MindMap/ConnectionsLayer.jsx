@@ -113,6 +113,7 @@ const ConnectionsLayer = () => {
 
         // 2. Draw Arbitrary Links
         state.links.forEach((link) => {
+            // ... existing link logic ...
             const fromCenter = getCenter(link.from);
             const toCenter = getCenter(link.to);
             if (fromCenter && toCenter) {
@@ -121,15 +122,50 @@ const ConnectionsLayer = () => {
                 const endX = toCenter.x;
                 const endY = toCenter.y;
 
-                // Straight line
                 newPaths.push({
                     id: link.id,
                     d: `M ${startX} ${startY} L ${endX} ${endY}`,
                     type: 'custom',
                     style: link.style || 'dashed',
                     color: link.color || '#ef4444',
-                    arrow: true // Default to arrow for custom links
+                    arrow: true
                 });
+            }
+        });
+
+        // 3. Draw Duplicate Name Connections (Light Dotted)
+        const textMap = {};
+        const collectText = (node) => {
+            if (!node) return;
+            const text = (node.text || '').trim().toLowerCase();
+            if (text && text !== 'new node') { // Ignore default new nodes to reduce noise? User didn't specify, but "Duplicate Names" usually implies content.
+                // Let's include everything as per request "same name".
+                if (!textMap[text]) textMap[text] = [];
+                textMap[text].push(node.id);
+            }
+            if (node.children) node.children.forEach(collectText);
+        };
+        collectText(state.root);
+
+        Object.values(textMap).forEach(ids => {
+            if (ids.length > 1) {
+                // Connect in sequence: 0->1, 1->2...
+                for (let i = 0; i < ids.length - 1; i++) {
+                    const fromId = ids[i];
+                    const toId = ids[i + 1];
+                    const start = getCenter(fromId);
+                    const end = getCenter(toId);
+
+                    if (start && end) {
+                        newPaths.push({
+                            id: `dup-${fromId}-${toId}`,
+                            d: `M ${start.x} ${start.y} L ${end.x} ${end.y}`, // Straight line
+                            type: 'duplicate',
+                            style: 'dotted',
+                            color: '#cbd5e1' // Light gray
+                        });
+                    }
+                }
             }
         });
 

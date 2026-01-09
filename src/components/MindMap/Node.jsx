@@ -3,8 +3,9 @@ import { useMap } from '../../context/MapContext';
 import { NotePencil } from '@phosphor-icons/react';
 import './Node.css';
 
-const Node = ({ node, positions, onReportSize, isRoot = false }) => {
+const Node = ({ node, positions, onReportSize, level = 0 }) => {
     const { state, dispatch } = useMap();
+    const isRoot = level === 0;
     const isEditing = state.editingId === node.id;
     const [editText, setEditText] = useState(node.text);
     const inputRef = useRef(null);
@@ -12,6 +13,13 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
 
     const isSelected = state.selectedIds.includes(node.id);
     const myPos = positions?.[node.id] || { x: 0, y: 0 };
+
+    // Resolve Style: Templates > User Overrides
+    const levelStyle = state.levelStyles?.[Math.min(level, 5)] || {};
+    const effectiveStyle = {
+        ...levelStyle,
+        ...node.style, // Node explicit style overrides template
+    };
 
     // Measure and report size
     useLayoutEffect(() => {
@@ -21,7 +29,7 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
                 onReportSize(node.id, offsetWidth, offsetHeight);
             }
         }
-    }, [node.text, node.style, isEditing, onReportSize, node.id]);
+    }, [node.text, effectiveStyle, isEditing, onReportSize, node.id]); // Use effectiveStyle dependency
 
     const handleClick = (e) => {
         e.stopPropagation();
@@ -31,6 +39,7 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
         });
     };
 
+    // ... (Drag handlers same as before) ...
     const handleDragStart = (e) => {
         e.stopPropagation();
         e.dataTransfer.setData('nodeId', node.id);
@@ -58,6 +67,13 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
     const handleDoubleClick = (e) => {
         e.stopPropagation();
         dispatch({ type: 'SET_EDITING_ID', payload: node.id });
+    };
+
+    const handleBorderDoubleClick = (e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        // Open Style Editor for this level
+        dispatch({ type: 'SET_EDITING_STYLE_LEVEL', payload: Math.min(level, 5) });
     };
 
     const handleBlur = () => {
@@ -90,6 +106,19 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
 
     return (
         <div className={`node-wrapper ${isRoot ? 'root' : ''}`}>
+            <div
+                className="node-border-target"
+                style={{
+                    position: 'absolute',
+                    top: -6, left: -6, right: -6, bottom: -6,
+                    border: '2px solid transparent', // Invisible 2px border + 4px extra space from top/left settings
+                    zIndex: 9,
+                    borderRadius: 8
+                }}
+                title={`Double Check Border to Edit Level ${level} Style`}
+                onDoubleClick={handleBorderDoubleClick}
+            ></div>
+
             {/* Node Content (The visual box) */}
             <div
                 ref={contentRef}
@@ -102,12 +131,13 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
                 onDragOver={handleDragOver}
                 onDrop={handleDrop}
                 style={{
-                    backgroundColor: node.style?.backgroundColor,
-                    color: node.style?.color,
-                    fontSize: node.style?.fontSize ? `${node.style.fontSize}px` : undefined,
-                    fontWeight: node.style?.fontWeight,
-                    fontStyle: node.style?.fontStyle,
-                    zIndex: 10
+                    backgroundColor: effectiveStyle.backgroundColor,
+                    color: effectiveStyle.color,
+                    fontSize: effectiveStyle.fontSize ? `${effectiveStyle.fontSize}px` : undefined,
+                    fontWeight: effectiveStyle.fontWeight,
+                    fontStyle: effectiveStyle.fontStyle,
+                    zIndex: 10,
+                    position: 'relative' // relative to sit above border target? Target is absolute.
                 }}
             >
                 {isEditing ? (
@@ -157,11 +187,6 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
                         const childPos = positions?.[child.id];
                         if (!childPos) return null; // Wait for layout
 
-                        // Calculate relative position from Parent Center (or Top-Left) to Child
-                        // Note: myPos and childPos are absolute coordinates in the map space.
-                        // We are inside the Parent's div.
-                        // If Parent is at (100, 100) and Child is at (200, 150).
-                        // Rel = (100, 50).
                         const relX = childPos.x - myPos.x;
                         const relY = childPos.y - myPos.y;
 
@@ -171,7 +196,6 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
                                 style={{
                                     position: 'absolute',
                                     transform: `translate(${relX}px, ${relY}px)`,
-                                    // Ensure width doesn't collapse 
                                     width: 'max-content'
                                 }}
                             >
@@ -179,6 +203,7 @@ const Node = ({ node, positions, onReportSize, isRoot = false }) => {
                                     node={child}
                                     positions={positions}
                                     onReportSize={onReportSize}
+                                    level={level + 1}
                                 />
                             </div>
                         );

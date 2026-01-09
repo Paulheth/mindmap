@@ -1,6 +1,7 @@
 import React from 'react';
 import { useMap } from '../../context/MapContext';
 import { parseMMFile } from '../../utils/mmParser';
+import { generateMMFile } from '../../utils/mmGenerator';
 import './IconToolbar.css';
 
 const IconToolbar = () => {
@@ -23,12 +24,31 @@ const IconToolbar = () => {
         updateStyle(prop, e.target.value);
     };
 
+    const downloadFile = (content, filename, contentType) => {
+        const dataStr = `data:${contentType};charset=utf-8,` + encodeURIComponent(content);
+        const downloadAnchorNode = document.createElement('a');
+        downloadAnchorNode.setAttribute("href", dataStr);
+        downloadAnchorNode.setAttribute("download", filename);
+        document.body.appendChild(downloadAnchorNode);
+        downloadAnchorNode.click();
+        downloadAnchorNode.remove();
+    };
+
     // Icons as small components for cleanliness
     const IconSave = () => (
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
             <polyline points="17 21 17 13 7 13 7 21"></polyline>
             <polyline points="7 3 7 8 15 8"></polyline>
+        </svg>
+    );
+    const IconSaveMM = () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
         </svg>
     );
     const IconFolder = () => (
@@ -90,18 +110,37 @@ const IconToolbar = () => {
         </svg>
     );
 
+    const IconStickyNote = () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+        </svg>
+    ); // Reusing similar shape or create distinct note look.
+    // Actually IconSaveMM used similar shape. Let's make Sticky Note look different? 
+    // Just a document with lines.
+
     return (
         <div className="icon-toolbar">
             <div className="toolbar-group">
-                <button title="Save Map" onClick={() => {
-                    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-                    const downloadAnchorNode = document.createElement('a');
-                    downloadAnchorNode.setAttribute("href", dataStr);
-                    downloadAnchorNode.setAttribute("download", "mindmap.json");
-                    document.body.appendChild(downloadAnchorNode);
-                    downloadAnchorNode.click();
-                    downloadAnchorNode.remove();
+                <button title="Save JSON" onClick={() => {
+                    downloadFile(JSON.stringify(state), 'mindmap.json', 'text/json');
                 }}><IconSave /></button>
+                <button title="Save as .mm" onClick={() => {
+                    const xmlContent = generateMMFile(state);
+                    downloadFile(xmlContent, 'mindmap.mm', 'text/xml');
+                }}><IconSaveMM /></button>
+                <label className="autosave-toggle" title="Toggle Auto Save" style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', marginLeft: 8, cursor: 'pointer', userSelect: 'none' }}>
+                    <input
+                        type="checkbox"
+                        checked={state.autoSave !== false}
+                        onChange={() => dispatch({ type: 'TOGGLE_AUTOSAVE' })}
+                        style={{ marginRight: 4 }}
+                    />
+                    Auto Save
+                </label>
                 <button title="Load Map" onClick={() => document.getElementById('file-upload').click()}>
                     <IconFolder />
                 </button>
@@ -153,6 +192,13 @@ const IconToolbar = () => {
                         alert("Please select exactly 2 nodes to connect.");
                     }
                 }}><IconLink /></button>
+                <button title="Add/Edit Note" onClick={() => {
+                    if (selectedCount === 1) {
+                        dispatch({ type: 'SET_EDITING_NOTE_ID', payload: state.selectedIds[0] });
+                    } else {
+                        alert("Please select 1 node to add a note.");
+                    }
+                }}><IconStickyNote /></button>
             </div>
 
             <div className="separator"></div>

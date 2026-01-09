@@ -1,11 +1,29 @@
 import React, { useRef } from 'react';
-import { useMap } from '../../context/MapContext';
+import { useMap, initialState } from '../../context/MapContext';
+import { useAuth } from '../../context/AuthContext';
 import { v4 as uuidv4 } from 'uuid';
 import './MenuBar.css';
 
 const MenuBar = () => {
     const { state, dispatch } = useMap();
+    const { user, logout } = useAuth();
     const fileInputRef = useRef(null);
+
+    const createNewMap = () => {
+        if (!state.autoSave) {
+            if (!confirm("You have auto-save disabled. Any unsaved changes will be lost. Create new map?")) {
+                return;
+            }
+        } else {
+            if (!confirm("Start a new map?")) {
+                return;
+            }
+        }
+
+        // Deep copy initial state to avoid reference issues
+        const cleanState = JSON.parse(JSON.stringify(initialState));
+        dispatch({ type: 'LOAD_MAP', payload: cleanState });
+    };
 
     const importMM = (e) => {
         const file = e.target.files[0];
@@ -70,8 +88,11 @@ const MenuBar = () => {
             <div className="menu-item">
                 File
                 <div className="dropdown">
+                    <div className="dropdown-item" onClick={createNewMap}>New Map</div>
                     <div className="dropdown-item" onClick={() => fileInputRef.current.click()}>Import .mm file</div>
                     <div className="dropdown-item" onClick={saveMap}>Export JSON</div>
+                    <div className="dropdown-separator"></div>
+                    <div className="dropdown-item" onClick={logout}>Logout</div>
                 </div>
             </div>
             <div className="menu-item">
@@ -90,6 +111,13 @@ const MenuBar = () => {
                 </div>
             </div>
             <div className="logo-area">Mind Map Manager</div>
+
+            {user && (
+                <div className="user-area" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' }}>
+                    <span>{user.email}</span>
+                    <button onClick={logout} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>Logout</button>
+                </div>
+            )}
 
             <input
                 type="file"

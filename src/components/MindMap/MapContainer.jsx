@@ -4,6 +4,7 @@ import { calculateMindMapLayout } from '../../utils/layoutEngine';
 import Node from './Node';
 import ConnectionsLayer from './ConnectionsLayer';
 import NoteEditor from './NoteEditor';
+import StyleEditor from './StyleEditor';
 import TimelineView from '../Timeline/TimelineView';
 import './MapContainer.css';
 
@@ -102,11 +103,13 @@ const MapContainer = () => {
                 <Node
                     node={state.root}
                     isRoot={true}
+                    level={0}
                     positions={nodePositions}
                     onReportSize={handleReportSize}
                 />
                 <NoteEditor />
             </div>
+            <StyleEditor />
         </div >
     );
 };

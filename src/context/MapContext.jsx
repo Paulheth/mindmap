@@ -4,7 +4,7 @@ import { balanceTree } from '../utils/treeBalancer';
 
 const MapContext = createContext();
 
-const initialNode = {
+export const initialNode = {
     id: 'root',
     text: 'Central Topic',
     date: null,
@@ -19,7 +19,7 @@ const initialNode = {
     children: []
 };
 
-const initialState = {
+export const initialState = {
     root: initialNode,
     selectedIds: ['root'],
     editingId: null, // Track which node is being edited
@@ -28,7 +28,17 @@ const initialState = {
     zoom: 1,
     view: 'map',
     horizontalSpread: 0, // 0 (Vertical) to 5 (Wide) -- Deprecated but kept for compatibility?
-    layoutSpacing: 0 // 0 (Vertical) to 10 (Wide / Wall Fill)
+    layoutSpacing: 0, // 0 (Vertical) to 10 (Wide / Wall Fill)
+    autoSave: true, // Default to on
+    editingStyleLevel: null, // For StyleEditor modal
+    levelStyles: {
+        0: { backgroundColor: '#2563eb', color: '#ffffff', fontSize: 24, fontWeight: 'bold' },
+        1: { backgroundColor: '#ef4444', color: '#ffffff', fontSize: 18, fontWeight: 'normal' },
+        2: { backgroundColor: '#22c55e', color: '#ffffff', fontSize: 16, fontWeight: 'normal' },
+        3: { backgroundColor: '#3b82f6', color: '#ffffff', fontSize: 14, fontWeight: 'normal' },
+        4: { backgroundColor: '#f59e0b', color: '#000000', fontSize: 14, fontWeight: 'normal' },
+        5: { backgroundColor: '#64748b', color: '#ffffff', fontSize: 12, fontWeight: 'normal' }
+    }
 };
 
 // Helper to find parent of a node (for sibling addition / deletion)
@@ -291,32 +301,60 @@ const mapReducer = (state, action) => {
         case 'SET_LAYOUT_SPACING':
             return { ...state, layoutSpacing: action.payload };
 
+        case 'UPDATE_LEVEL_STYLE': {
+            const { level, style } = action.payload;
+            return {
+                ...state,
+                levelStyles: {
+                    ...state.levelStyles,
+                    [level]: { ...state.levelStyles[level], ...style }
+                }
+            };
+        }
+
+        case 'SET_EDITING_STYLE_LEVEL':
+            return { ...state, editingStyleLevel: action.payload };
+
         default:
             return state;
     }
 };
 
-// Helper to load initial state
-const loadState = () => {
-    try {
-        const saved = localStorage.getItem('mindMapData');
-        if (saved) return JSON.parse(saved);
-    } catch (e) {
-        console.error("Failed to load map data", e);
-    }
-    return initialState;
-};
+// Helper to load initial state (Moved logic inside effect or reducer initiation if needed, but we'll use effect for user switching)
+// We default to initialState on first render, then load user data.
 
-export const MapProvider = ({ children }) => {
-    const [state, dispatch] = useReducer(mapReducer, undefined, loadState);
+export const MapProvider = ({ children, userId }) => {
+    const [state, dispatch] = useReducer(mapReducer, initialState);
+
+    // Load data when userId changes
+    React.useEffect(() => {
+        if (!userId) return;
+
+        try {
+            const saved = localStorage.getItem(`mindMapData_${userId}`);
+            if (saved) {
+                const payload = JSON.parse(saved);
+                dispatch({ type: 'LOAD_MAP', payload });
+            } else {
+                // New user or no data: Load default/initial
+                // Dispatching LOAD_MAP with initialState ensures we reset if we switched from another user
+                dispatch({ type: 'LOAD_MAP', payload: initialState });
+            }
+        } catch (e) {
+            console.error("Failed to load map data", e);
+            dispatch({ type: 'LOAD_MAP', payload: initialState });
+        }
+    }, [userId]);
 
     // Auto-save on change
     React.useEffect(() => {
+        if (!userId) return;
+
         const timeout = setTimeout(() => {
-            localStorage.setItem('mindMapData', JSON.stringify(state));
+            localStorage.setItem(`mindMapData_${userId}`, JSON.stringify(state));
         }, 500); // Debounce 500ms
         return () => clearTimeout(timeout);
-    }, [state]);
+    }, [state, userId]);
 
     return (
         <MapContext.Provider value={{ state, dispatch }}>
