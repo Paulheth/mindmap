@@ -200,8 +200,8 @@ const ConnectionsLayer = () => {
                     key={p.id}
                     d={p.d}
                     stroke={p.type === 'tree' ? '#94a3b8' : (p.color || '#ef4444')}
-                    strokeWidth={p.type === 'tree' ? "2" : "2"}
-                    strokeDasharray={(p.style === 'dashed' || p.type === 'custom') ? "5,5" : "none"}
+                    strokeWidth={p.type === 'duplicate' ? "1" : "2"}
+                    strokeDasharray={(p.style === 'dashed' || p.type === 'custom') ? "5,5" : (p.style === 'dotted' ? "2,4" : "none")}
                     fill="none"
                     markerEnd={p.type === 'custom' && p.arrow ? `url(#arrow-${p.color === '#2563eb' ? 'blue' : (p.color === '#ef4444' ? 'red' : 'black')})` : ''}
                 />
