@@ -2,19 +2,15 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useMap } from '../../context/MapContext';
 import './NoteEditor.css';
 
-const NoteEditor = () => {
+const NoteEditor = ({ position = { x: 0, y: 0 } }) => {
     const { state, dispatch } = useMap();
     const { editingNoteId } = state;
     const [noteText, setNoteText] = useState('');
     const textareaRef = useRef(null);
 
-    // Find the node being edited
-    // We need a helper to find generic node by ID since the context helper isn't exported directly
-    // Ideally we should export findNode from specific utils or Context
-    // For now, let's just search the tree or assume we can pass the node if we change structure.
-    // The reducer has findNode but it's internal.
-    // Let's do a quick BFS to find the node from state.root
+    // Find the node being edited to get initial text
     const findNodeById = (root, id) => {
+        if (!root) return null;
         if (root.id === id) return root;
         if (root.children) {
             for (let child of root.children) {
@@ -34,12 +30,15 @@ const NoteEditor = () => {
     }, [node]);
 
     useEffect(() => {
-        if (textareaRef.current) {
-            textareaRef.current.focus();
-        }
+        // Auto-focus with a slight delay to ensure render
+        setTimeout(() => {
+            if (textareaRef.current) {
+                textareaRef.current.focus();
+            }
+        }, 50);
     }, [editingNoteId]);
 
-    if (!editingNoteId || !node) return null;
+    if (!editingNoteId) return null;
 
     const handleSave = () => {
         dispatch({
@@ -68,22 +67,39 @@ const NoteEditor = () => {
     };
 
     return (
-        <div className="note-editor-overlay" onClick={handleClose}>
-            <div className="note-editor-modal" onClick={e => e.stopPropagation()}>
+        <div
+            className="note-editor-container"
+            style={{
+                left: position.x + 40, // Offset to the right of the node
+                top: position.y - 20   // Align near top
+            }}
+            onClick={(e) => e.stopPropagation()} // Prevent map interaction
+            onWheel={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+        >
+            <div className="note-header">
                 <h3>Edit Note</h3>
+                <button className="btn-note btn-cancel-icon" onClick={handleClose}>✕</button>
+            </div>
+
+            <div className="note-content">
                 <textarea
                     ref={textareaRef}
+                    className="note-textarea"
                     value={noteText}
-                    onChange={e => setNoteText(e.target.value)}
+                    onChange={(e) => setNoteText(e.target.value)}
                     placeholder="Enter your note here..."
-                    rows={8}
                 />
-                <div className="note-editor-actions">
-                    <button className="note-delete-btn" onClick={handleDelete}>Delete Note</button>
-                    <div className="right-actions">
-                        <button className="note-cancel-btn" onClick={handleClose}>Cancel</button>
-                        <button className="note-save-btn" onClick={handleSave}>Save Note</button>
-                    </div>
+            </div>
+
+            <div className="note-actions">
+                <button className="btn-note btn-delete" onClick={handleDelete} title="Delete Note">
+                    🗑
+                </button>
+                <div className="action-right">
+                    <button className="btn-note btn-save" onClick={handleSave}>
+                        Save
+                    </button>
                 </div>
             </div>
         </div>

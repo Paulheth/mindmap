@@ -206,7 +206,10 @@ const MapContainer = () => {
                     positions={nodePositions}
                     onReportSize={handleReportSize}
                 />
-                <NoteEditor />
+                {/* Note Editor Popover */}
+                {state.editingNoteId && nodePositions[state.editingNoteId] && (
+                    <NoteEditor position={nodePositions[state.editingNoteId]} />
+                )}
             </div>
             <StyleEditor />
         </div >
