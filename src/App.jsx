@@ -17,7 +17,8 @@ const AppContent = () => {
       <MenuBar />
       <IconToolbar />
       <main className="app-content">
-        {state.view === 'timeline' ? <TimelineView /> : <MapContainer />}
+        {state.view === 'timeline' && <TimelineView />}
+        <MapContainer hidden={state.view === 'timeline'} />
       </main>
     </div>
   );

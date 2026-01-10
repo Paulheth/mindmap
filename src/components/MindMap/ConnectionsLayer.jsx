@@ -2,23 +2,27 @@ import React, { useEffect, useState, useCallback } from 'react';
 import { useMap } from '../../context/MapContext';
 import './ConnectionsLayer.css';
 
-const ConnectionsLayer = () => {
+const ConnectionsLayer = ({ idPrefix = '', containerRef = null, zoomOverride = null }) => {
     const { state } = useMap();
     const [paths, setPaths] = useState([]);
 
     const drawPaths = useCallback(() => {
-        const canvas = document.querySelector('.map-canvas');
+        // Use provided containerRef or find default canvas
+        const canvas = containerRef
+            ? containerRef.current
+            : document.querySelector('.map-canvas');
+
         if (!canvas) return;
         const canvasRect = canvas.getBoundingClientRect();
 
         const getCenter = (id) => {
-            const el = document.getElementById(`node-${id}`);
+            const el = document.getElementById(`${idPrefix}node-${id}`);
             if (!el) return null;
             const rect = el.getBoundingClientRect();
             // Compensation for zoom:
             // Visual Delta = rect - canvasRect.
             // Logical Delta = Visual Delta / Zoom.
-            const zoom = state.zoom || 1;
+            const zoom = zoomOverride !== null ? zoomOverride : (state.zoom || 1);
 
             return {
                 x: (rect.left - canvasRect.left) / zoom + (rect.width / zoom) / 2,

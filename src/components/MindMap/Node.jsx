@@ -4,7 +4,7 @@ import { NotePencil } from '@phosphor-icons/react';
 import NoteEditor from './NoteEditor';
 import './Node.css';
 
-const Node = ({ node, positions, onReportSize, level = 0 }) => {
+const Node = ({ node, positions, onReportSize, level = 0, idPrefix = '' }) => {
     const { state, dispatch } = useMap();
     const isRoot = level === 0;
     const isEditing = state.editingId === node.id;
@@ -34,6 +34,8 @@ const Node = ({ node, positions, onReportSize, level = 0 }) => {
 
     const handleClick = (e) => {
         e.stopPropagation();
+        // If preview (idPrefix set), maybe don't allow selection? Or allow jump?
+        // For now, allow selection logic to run, it updates global state.
         dispatch({
             type: 'SELECT_NODE',
             payload: { id: node.id, multi: e.shiftKey || e.metaKey }
@@ -110,7 +112,7 @@ const Node = ({ node, positions, onReportSize, level = 0 }) => {
             {/* Node Content (The visual box) */}
             <div
                 ref={contentRef}
-                id={`node-${node.id}`}
+                id={`${idPrefix}node-${node.id}`}
                 className={`node-content ${isSelected ? 'selected' : ''}`}
                 onClick={handleClick}
                 onDoubleClick={handleDoubleClick}

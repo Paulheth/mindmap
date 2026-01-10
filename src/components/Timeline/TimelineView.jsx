@@ -1,9 +1,11 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useMap } from '../../context/MapContext';
+import MapPreview from '../MindMap/MapPreview';
 import './TimelineView.css';
 
 const TimelineView = () => {
     const { state, dispatch } = useMap();
+    const [hoveredNode, setHoveredNode] = useState(null); // { id, x, y }
 
     // Flatten nodes and group by date
     const timelineGroups = useMemo(() => {
@@ -37,6 +39,19 @@ const TimelineView = () => {
                 nodes: groups[date]
             }));
     }, [state.root, state.levelStyles]);
+
+    const handleMouseEnter = (e, nodeId) => {
+        const rect = e.currentTarget.getBoundingClientRect();
+        setHoveredNode({
+            id: nodeId,
+            x: rect.right + 10, // Show to the right
+            y: rect.top
+        });
+    };
+
+    const handleMouseLeave = () => {
+        setHoveredNode(null);
+    };
 
     return (
         <div className="timeline-view">
@@ -93,8 +108,48 @@ const TimelineView = () => {
                             }
                         };
 
+                        // Drag & Drop Handlers
+                        const handleDragStart = (e, nodeId) => {
+                            e.dataTransfer.setData('timelineNodeId', nodeId);
+                            e.dataTransfer.effectAllowed = 'move';
+                        };
+
+                        const handleDragOver = (e) => {
+                            e.preventDefault(); // Allow drop
+                            e.dataTransfer.dropEffect = 'move';
+                            e.currentTarget.classList.add('drag-over');
+                        };
+
+                        const handleDragLeave = (e) => {
+                            e.currentTarget.classList.remove('drag-over');
+                        };
+
+                        const handleDrop = (e) => {
+                            e.preventDefault();
+                            e.currentTarget.classList.remove('drag-over');
+                            const nodeId = e.dataTransfer.getData('timelineNodeId');
+
+                            if (nodeId) {
+                                // Update the node's date to this group's date
+                                dispatch({
+                                    type: 'UPDATE_NODE',
+                                    payload: {
+                                        id: nodeId,
+                                        updates: { date: group.date }
+                                    }
+                                });
+                            }
+                        };
+
+
                         return (
-                            <div key={group.date} className="timeline-item">
+                            <div
+                                key={group.date}
+                                className="timeline-item"
+                                onDragOver={handleDragOver}
+                                onDragLeave={handleDragLeave}
+                                onDrop={handleDrop}
+                            >
                                 {/* Editable Date Label */}
                                 <EditableDate
                                     date={group.date}
@@ -122,7 +177,18 @@ const TimelineView = () => {
                                         <div
                                             key={node.id}
                                             className="timeline-card"
-                                            style={{ borderColor: node.effectiveStyle?.backgroundColor, borderLeftWidth: 4 }}
+                                            style={{ borderColor: node.effectiveStyle?.backgroundColor, borderLeftWidth: 4, cursor: 'grab' }}
+                                            draggable
+                                            onDragStart={(e) => handleDragStart(e, node.id)}
+                                            onMouseEnter={(e) => handleMouseEnter(e, node.id)}
+                                            onMouseLeave={handleMouseLeave}
+                                            onDoubleClick={() => {
+                                                // Open in new tab with focus
+                                                const url = new URL(window.location.href);
+                                                url.searchParams.set('focus', node.id);
+                                                window.open(url.toString(), '_blank');
+                                            }}
+                                            title="Double-click to view in Map (New Tab)"
                                         >
                                             <strong>{node.text}</strong>
                                         </div>
@@ -135,6 +201,21 @@ const TimelineView = () => {
 
                     {/* End Line Lead-out */}
                     <div style={{ minWidth: 100, height: 4, background: '#334155' }}></div>
+                </div>
+            )}
+
+            {/* Hover Pop-up */}
+            {hoveredNode && (
+                <div
+                    style={{
+                        position: 'fixed',
+                        top: hoveredNode.y,
+                        left: hoveredNode.x,
+                        zIndex: 1000,
+                        pointerEvents: 'none' // Don't interfere with mouse
+                    }}
+                >
+                    <MapPreview targetNodeId={hoveredNode.id} />
                 </div>
             )}
         </div>

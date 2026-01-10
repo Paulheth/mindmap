@@ -17,6 +17,7 @@ export const initialNode = {
 
 export const initialState = {
     root: initialNode,
+    nodePositions: {}, // Global layout state
     selectedIds: ['root'],
     editingId: null, // Track which node is being edited
     editingNoteId: null, // Track which node's note is being edited
@@ -108,6 +109,11 @@ const mapReducer = (state, action) => {
                 node.y = y;
             }
             return newState;
+        }
+
+        case 'UPDATE_ALL_NODE_POSITIONS': {
+            // Bulk update for layout engine results
+            return { ...state, nodePositions: action.payload };
         }
 
         case 'ADD_CHILD': {

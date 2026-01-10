@@ -8,25 +8,84 @@ import StyleEditor from './StyleEditor';
 import TimelineView from '../Timeline/TimelineView';
 import './MapContainer.css';
 
-const MapContainer = () => {
+const MapContainer = ({ hidden = false }) => {
     const { state, dispatch } = useMap();
     const containerRef = useRef(null);
 
     const [nodeDimensions, setNodeDimensions] = useState({});
-    const [nodePositions, setNodePositions] = useState({});
+    // Local state for animation smoothness, but we sync to global for other views
+    const [localNodePositions, setLocalNodePositions] = useState({});
     const [canvasSize, setCanvasSize] = useState({ width: 0, height: 0 });
 
-    // Calculate Layout whenever tree or dimensions change
-    // Only if we are in MAP view? Or always?
-    // Optimization: Only layout if view is map.
+    // Use global positions if local are empty (e.g. init) to avoid jump?
+    // Actually, we should probably stick to local for rendering THIS component to avoid context loop,
+    // and sync to global for OTHERS. 
+    // BUT if we want pop-up to be perfectly synced, maybe we should just use global?
+    // If we use global, every layout tick causes a context update -> re-render of everything.
+    // That might be heavy. 
+    // Better: Run layout -> Set Local -> Sync Global (Debounced or Post-Layout).
+    // Given the request "Persistent Layout Engine", MapContainer IS the engine.
+
+    // Let's use Local for rendering here, and side-effect dispatch to global.
+
     // Calculate Layout whenever tree or dimensions change
     useLayoutEffect(() => {
-        if (!state.root || state.view !== 'map') return;
+        if (!state.root) return;
         // Pass current (previous) positions to seed the next layout
-        const layout = calculateMindMapLayout(state.root, nodeDimensions, state.layoutSpacing, nodePositions);
-        setNodePositions(layout.nodes || {});
+        const layout = calculateMindMapLayout(state.root, nodeDimensions, state.layoutSpacing, localNodePositions);
+
+        setLocalNodePositions(layout.nodes || {});
         setCanvasSize({ width: layout.width || 0, height: layout.height || 0 });
-    }, [state.root, nodeDimensions, state.view, state.layoutSpacing]);
+
+        // Sync to global state for Timeline/Popups
+        if (Object.keys(layout.nodes || {}).length > 0) {
+            dispatch({ type: 'UPDATE_ALL_NODE_POSITIONS', payload: layout.nodes });
+        }
+    }, [state.root, nodeDimensions, state.layoutSpacing]); // Removed state.view dependency so it runs always (if mounted)
+
+    // Deep Linking / Focus Logic
+    // Runs when layout is ready (localNodePositions populated)
+    const handledFocusId = useRef(null);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        const focusId = params.get('focus');
+
+        // If we have a focus ID, and it's different from the one we last handled
+        // AND we have the position for it.
+        if (focusId && focusId !== handledFocusId.current && localNodePositions[focusId]) {
+            const targetPos = localNodePositions[focusId];
+
+            // Mark as handled appropriately
+            handledFocusId.current = focusId;
+
+            // Calculate Pan to Center Target
+            // Center Screen = Window / 2
+            // Target Canvas = targetPos
+            // Pan = Center Screen - (Target Canvas * Zoom)
+            // But Pan Logic in handleWheel is: Mouse - (Mouse - Pan) * Ratio...
+            // Simple render transform is: translate(Pan) scale(Zoom)
+            // So: ScreenX = (CanvasX * Zoom) + PanX
+            // => PanX = ScreenX - (CanvasX * Zoom)
+
+            const zoom = 1; // Force 100% zoom on focus? Or keep current? Let's reset to 1 for clarity.
+            const screenCenter = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+
+            const newPan = {
+                x: screenCenter.x - (targetPos.x * zoom),
+                y: screenCenter.y - (targetPos.y * zoom)
+            };
+
+            setLocalPan(newPan);
+            dispatch({ type: 'SET_PAN', payload: newPan });
+            dispatch({ type: 'SET_ZOOM', payload: zoom });
+            dispatch({ type: 'SELECT_NODE', payload: { id: focusId, multi: false } });
+            dispatch({ type: 'SET_VIEW', payload: 'map' }); // Force map view in case new tab inherited timeline state
+
+            // Clean URL to prevent re-focusing on reload? 
+            // Maybe not, user might want to bookmark. 
+        }
+    }, [localNodePositions, dispatch]); // Dependency on localNodePositions ensures we wait for layout
 
     // Optimize size reporting to avoid unnecessary re-renders
     const handleReportSize = useCallback((id, width, height) => {
@@ -82,12 +141,20 @@ const MapContainer = () => {
     }, [state.selectedIds, dispatch]);
 
     // Render Timeline View if active
-    if (state.view === 'timeline') {
+    if (state.view === 'timeline' && !hidden) {
         return (
             <div className="map-container" ref={containerRef}>
                 <TimelineView />
             </div>
         );
+    }
+
+    if (hidden) {
+        // Render minimal for layout engine only
+        // We still need the DOM for size measurement (onReportSize in Node)
+        // So we render fully but with visibility hidden
+        // And absolute positioning off-screen or z-index behind?
+        // Visibility hidden is safest for layout.
     }
 
     // Panning Logic (Local state for performance, sync to context on end)
@@ -242,6 +309,7 @@ const MapContainer = () => {
             onWheel={handleWheel}
             onDragOver={handleDragOver}
             onDrop={handleDrop}
+            style={hidden ? { visibility: 'hidden', position: 'absolute', pointerEvents: 'none', zIndex: -1, width: '100%', height: '100%' } : {}}
         >
             <div
                 className={`map-canvas`}
@@ -253,24 +321,26 @@ const MapContainer = () => {
                     transformOrigin: '0 0' // Must be 0 0 for Top-Left based pan/zoom math to work correctly
                     // With FlexTree layout, center might be better, but let's test.
                     // If zoom is handled by simple scale, transform origin matters.
+                }}
+            >
                 <ConnectionsLayer />
-                {state.root && nodePositions[state.root.id] && (
+                {state.root && localNodePositions[state.root.id] && (
                     <div style={{
                         position: 'absolute',
-                        transform: `translate(${nodePositions[state.root.id].x}px, ${nodePositions[state.root.id].y}px)`
+                        transform: `translate(${localNodePositions[state.root.id].x}px, ${localNodePositions[state.root.id].y}px)`
                     }}>
                         <Node
                             node={state.root}
                             isRoot={true}
                             level={0}
-                            positions={nodePositions}
+                            positions={localNodePositions}
                             onReportSize={handleReportSize}
                         />
                     </div>
                 )}
-                {state.editingNoteId && nodePositions[state.editingNoteId] && (() => {
+                {state.editingNoteId && localNodePositions[state.editingNoteId] && (() => {
                     const nodeId = state.editingNoteId;
-                    const pos = nodePositions[nodeId];
+                    const pos = localNodePositions[nodeId];
                     const dims = nodeDimensions[nodeId] || { width: 100, height: 40 };
                     // pos.y is horizontal (left/right) in this swapped layout system?
                     // Checked Node uses transform(y, x).
