@@ -19,6 +19,23 @@ export const parseMMFile = (xmlContent) => {
         const text = xmlNode.getAttribute("TEXT") || xmlNode.getAttribute("text") || "Node";
         const folded = xmlNode.getAttribute("FOLDED") === "true";
         const position = xmlNode.getAttribute("POSITION") || xmlNode.getAttribute("position");
+        const dateAttr = xmlNode.getAttribute("DATE") || xmlNode.getAttribute("date");
+        const noteAttr = xmlNode.getAttribute("NOTE") || xmlNode.getAttribute("note");
+
+        let noteContent = noteAttr || null;
+
+        // Try to find richcontent note if attribute is missing
+        if (!noteContent) {
+            const richContent = Array.from(xmlNode.childNodes).find(
+                child => child.nodeName === 'richcontent' && child.getAttribute('TYPE') === 'NOTE'
+            );
+            if (richContent) {
+                // Simplified extraction: just get text content of body
+                // Ideally this would parse HTML to plain text or keep HTML if we supported it
+                // For now, let's try to get the text inside <p> or just pure text
+                noteContent = richContent.textContent.trim();
+            }
+        }
 
         const style = {};
 
@@ -33,7 +50,8 @@ export const parseMMFile = (xmlContent) => {
         const node = {
             id,
             text,
-            date: null,
+            date: dateAttr || null,
+            note: noteContent,
             style,
             // Capture side preference
             side: position === 'left' || position === 'right' ? position : null,
