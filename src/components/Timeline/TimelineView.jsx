@@ -67,8 +67,8 @@ const TimelineView = () => {
 
                     {timelineGroups.map((group, index) => {
                         // Use the first node's dateColor as the representative color for the timeline marker
-                        // Default to Blue if no color set
-                        const groupColor = group.nodes[0]?.dateColor || '#3b82f6';
+                        // Default to Grey (#cbd5e1) to match map nodes
+                        const groupColor = group.nodes[0]?.dateColor || '#cbd5e1';
 
                         const handleColorChange = (e) => {
                             const newColor = e.target.value;
@@ -130,12 +130,15 @@ const TimelineView = () => {
                             const nodeId = e.dataTransfer.getData('timelineNodeId');
 
                             if (nodeId) {
-                                // Update the node's date to this group's date
+                                // Update the node's date to this group's date, AND reset color to default
                                 dispatch({
                                     type: 'UPDATE_NODE',
                                     payload: {
                                         id: nodeId,
-                                        updates: { date: group.date }
+                                        updates: {
+                                            date: group.date,
+                                            dateColor: null // Reset color to default (grey)
+                                        }
                                     }
                                 });
                             }

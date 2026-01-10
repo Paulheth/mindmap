@@ -289,7 +289,7 @@ const IconToolbar = () => {
                         className="toolbar-date"
                         onChange={(e) => dispatch({
                             type: 'UPDATE_NODE',
-                            payload: { ids: state.selectedIds, updates: { date: e.target.value } }
+                            payload: { ids: state.selectedIds, updates: { date: e.target.value, dateColor: null } }
                         })}
                     />
                 </div>
