@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback, useLayoutEffect } from
 import { useMap } from '../../context/MapContext';
 import { calculateMindMapLayout } from '../../utils/layoutEngine';
 import Node from './Node';
+import NoteEditor from './NoteEditor';
 import ConnectionsLayer from './ConnectionsLayer';
 import StyleEditor from './StyleEditor';
 import TimelineView from '../Timeline/TimelineView';
