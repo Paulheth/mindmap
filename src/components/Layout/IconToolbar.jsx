@@ -121,6 +121,9 @@ const IconToolbar = () => {
         </svg>
     );
 
+    const isTimeline = state.view === 'timeline';
+    const disabledStyle = isTimeline ? { opacity: 0.3, pointerEvents: 'none' } : {};
+
     return (
         <div className="icon-toolbar">
             <div className="toolbar-group">
@@ -202,21 +205,29 @@ const IconToolbar = () => {
                         alert("Please select 1 node to add a note.");
                     }
                 }}><IconStickyNote /></button>
-                <button title="Node Style Setup" onClick={() => dispatch({ type: 'SET_EDITING_STYLE_LEVEL', payload: 'GLOBAL' })}>
+
+                {/* Style Settings - Disabled in Timeline */}
+                <button
+                    title="Node Style Setup"
+                    onClick={() => !isTimeline && dispatch({ type: 'SET_EDITING_STYLE_LEVEL', payload: 'GLOBAL' })}
+                    style={disabledStyle}
+                    disabled={isTimeline}
+                >
                     <IconGear />
                 </button>
             </div>
 
             <div className="separator"></div>
 
-            <div className="toolbar-group">
+            {/* Styling Tools - Disabled in Timeline */}
+            <div className="toolbar-group" style={disabledStyle}>
                 <div className="color-picker-wrapper" title="Background Color">
                     <IconPaintBucket />
-                    <input type="color" onChange={(e) => handleColorChange(e, 'backgroundColor')} />
+                    <input type="color" onChange={(e) => handleColorChange(e, 'backgroundColor')} disabled={isTimeline} />
                 </div>
                 <div className="color-picker-wrapper" title="Text Color">
                     <IconText />
-                    <input type="color" onChange={(e) => handleColorChange(e, 'color')} />
+                    <input type="color" onChange={(e) => handleColorChange(e, 'color')} disabled={isTimeline} />
                 </div>
                 <div className="font-size-wrapper" style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <span style={{ fontSize: 10, color: '#64748b' }}>Px:</span>
@@ -227,22 +238,24 @@ const IconToolbar = () => {
                         defaultValue="14"
                         onChange={(e) => updateStyle('fontSize', parseInt(e.target.value))}
                         style={{ width: 40, border: '1px solid #cbd5e1', borderRadius: 4, padding: 2, fontSize: 12 }}
+                        disabled={isTimeline}
                     />
                 </div>
-                <button title="Bold" onClick={() => updateStyle('fontWeight', 'bold')}><IconBold /></button>
-                <button title="Italic" onClick={() => updateStyle('fontStyle', 'italic')}><IconItalic /></button>
+                <button title="Bold" onClick={() => updateStyle('fontWeight', 'bold')} disabled={isTimeline}><IconBold /></button>
+                <button title="Italic" onClick={() => updateStyle('fontStyle', 'italic')} disabled={isTimeline}><IconItalic /></button>
                 <button title="Normal Text" onClick={() => {
                     updateStyle('fontWeight', 'normal');
                     updateStyle('fontStyle', 'normal');
-                }} style={{ fontSize: 10, width: 'auto', padding: '0 4px' }}>Reset</button>
+                }} style={{ fontSize: 10, width: 'auto', padding: '0 4px' }} disabled={isTimeline}>Reset</button>
             </div>
 
             <div className="separator"></div>
 
-            <div className="toolbar-group">
-                <button title="Zoom In" onClick={() => dispatch({ type: 'SET_ZOOM', payload: Math.min((state.zoom || 1) + 0.1, 2) })}>+</button>
+            {/* Zoom Controls - Disabled in Timeline */}
+            <div className="toolbar-group" style={disabledStyle}>
+                <button title="Zoom In" onClick={() => dispatch({ type: 'SET_ZOOM', payload: Math.min((state.zoom || 1) + 0.1, 2) })} disabled={isTimeline}>+</button>
                 <div style={{ fontSize: 12, width: 30, textAlign: 'center' }}>{Math.round((state.zoom || 1) * 100)}%</div>
-                <button title="Zoom Out" onClick={() => dispatch({ type: 'SET_ZOOM', payload: Math.max((state.zoom || 1) - 0.1, 0.5) })}>-</button>
+                <button title="Zoom Out" onClick={() => dispatch({ type: 'SET_ZOOM', payload: Math.max((state.zoom || 1) - 0.1, 0.5) })} disabled={isTimeline}>-</button>
             </div>
 
             <div className="separator"></div>
@@ -264,7 +277,8 @@ const IconToolbar = () => {
 
             <div className="separator"></div>
 
-            <div className="toolbar-group">
+            {/* Layout Density - Disabled in Timeline */}
+            <div className="toolbar-group" style={disabledStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748b' }}>
                     <span>Vertical</span>
                     <input
@@ -276,12 +290,13 @@ const IconToolbar = () => {
                         onChange={(e) => dispatch({ type: 'SET_LAYOUT_SPACING', payload: parseInt(e.target.value) })}
                         style={{ width: 100 }}
                         title={`Wall Spread: ${state.layoutSpacing || 0}`}
+                        disabled={isTimeline}
                     />
                     <span>Wide</span>
                 </div>
             </div>
 
-            <div className="toolbar-group">
+            <div className="toolbar-group" style={disabledStyle}>
                 <div className="date-wrapper">
                     <IconCalendar />
                     <input
@@ -291,6 +306,8 @@ const IconToolbar = () => {
                             type: 'UPDATE_NODE',
                             payload: { ids: state.selectedIds, updates: { date: e.target.value, dateColor: null } }
                         })}
+                        disabled={isTimeline}
+                        title={isTimeline ? "Date Picker disabled in Timeline View" : "Set Date"}
                     />
                 </div>
             </div>
