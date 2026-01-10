@@ -160,19 +160,10 @@ const TimelineView = () => {
                                     onDateChange={handleDateChange}
                                 />
 
-                                <label className="timeline-marker-wrapper" style={{ cursor: 'pointer', position: 'relative', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <div
-                                        className="timeline-marker"
-                                        style={{ backgroundColor: groupColor, borderColor: groupColor }}
-                                        title="Click to set color for this date"
-                                    ></div>
-                                    <input
-                                        type="color"
-                                        onInput={handleColorChange}
-                                        value={groupColor}
-                                        style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', opacity: 0, cursor: 'pointer', zIndex: 10 }}
-                                    />
-                                </label>
+                                <TimelineColorPicker
+                                    color={groupColor}
+                                    onChange={handleColorChange}
+                                />
 
                                 <div className="timeline-connector" style={{ backgroundColor: groupColor }}></div>
                                 <div className="timeline-stack">
@@ -263,6 +254,131 @@ const EditableDate = ({ date, color, onDateChange }) => {
                     padding: 0
                 }}
             />
+        </div>
+    );
+};
+
+const TimelineColorPicker = ({ color, onChange }) => {
+    const [isOpen, setIsOpen] = React.useState(false);
+    const popoverRef = React.useRef(null);
+
+    // 24 Light Colors suitable for black text
+    // 18 Distinct Vibrant Colors (6x3 Grid) maximizing hue variation
+    const lightPalette = [
+        // Row 1: Vivid Warm (Red -> Green)
+        '#ef4444', // Red 
+        '#f97316', // Orange 
+        '#eab308', // Gold 
+        '#84cc16', // Lime 
+        '#22c55e', // Green 
+        '#10b981', // Emerald 
+
+        // Row 2: Vivid Cool (Teal -> Pink) - Skipping similar blues
+        '#14b8a6', // Teal 
+        '#06b6d4', // Cyan 
+        '#3b82f6', // Blue (Primary)
+        '#8b5cf6', // Violet 
+        '#d946ef', // Fuchsia 
+        '#ec4899', // Pink 
+
+        // Row 3: Distinct & Neutrals
+        '#f43f5e', // Rose 
+        '#64748b', // Slate (Blue Grey)
+        '#78716c', // Stone (Warm Grey)
+        '#818cf8', // Periwinkle (Indigo 400)
+        '#fb7185', // Salmon (Rose 400)
+        '#6ee7b7'  // Mint (Emerald 300)
+    ];
+
+    // Handle clicking outside to close
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (popoverRef.current && !popoverRef.current.contains(event.target)) {
+                setIsOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleSelect = (c) => {
+        // Mock event object for the parent handler
+        onChange({ target: { value: c } });
+        setIsOpen(false);
+    };
+
+    return (
+        <div className="timeline-marker-wrapper" style={{ position: 'relative' }}>
+            <div
+                className="timeline-marker"
+                style={{ backgroundColor: color, borderColor: color, cursor: 'pointer' }}
+                onClick={() => setIsOpen(!isOpen)}
+                title="Change Date Color"
+            ></div>
+
+            {isOpen && (
+                <div
+                    ref={popoverRef}
+                    className="color-popover"
+                    style={{
+                        position: 'absolute',
+                        top: '100%',
+                        left: '50%',
+                        transform: 'translateX(-50%)',
+                        marginTop: 8,
+                        background: 'white',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: 8,
+                        boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
+                        padding: 8,
+                        zIndex: 1000,
+                        width: 'max-content',
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(6, 1fr)',
+                        gap: 6
+                    }}
+                >
+                    {lightPalette.map(c => (
+                        <div
+                            key={c}
+                            onClick={() => handleSelect(c)}
+                            style={{
+                                width: 20,
+                                height: 20,
+                                borderRadius: '50%',
+                                backgroundColor: c,
+                                border: color === c ? '2px solid #334155' : '1px solid #cbd5e1',
+                                cursor: 'pointer',
+                                transition: 'transform 0.1s'
+                            }}
+                            title={c}
+                        />
+                    ))}
+                    {/* Custom Picker Add Button */}
+                    <label
+                        className="custom-color-add"
+                        style={{
+                            width: 20,
+                            height: 20,
+                            borderRadius: '50%',
+                            background: 'conic-gradient(red, yellow, lime, cyan, blue, magenta, red)',
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            border: '1px solid #cbd5e1'
+                        }}
+                        title="Custom Color"
+                    >
+                        <input
+                            type="color"
+                            style={{ opacity: 0, width: '100%', height: '100%', cursor: 'pointer' }}
+                            onChange={(e) => handleSelect(e.target.value)}
+                        />
+                        <span style={{ fontSize: 14, fontWeight: 'bold', color: 'white', textShadow: '0 0 2px black', pointerEvents: 'none' }}>+</span>
+                    </label>
+                </div>
+            )}
         </div>
     );
 };
