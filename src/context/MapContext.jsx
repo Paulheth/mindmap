@@ -22,6 +22,8 @@ export const initialState = {
     pan: { x: 0, y: 0 },
     zoom: 1,
     view: 'map',
+    isSaveModalOpen: false,
+    filename: 'mindmap', // Default filename
     horizontalSpread: 0, // 0 (Vertical) to 5 (Wide) -- Deprecated but kept for compatibility?
     layoutSpacing: 0, // 0 (Vertical) to 10 (Wide / Wall Fill)
     autoSave: true, // Default to on
@@ -342,6 +344,12 @@ const mapReducer = (state, action) => {
 
         case 'SET_EDITING_STYLE_LEVEL':
             return { ...state, editingStyleLevel: action.payload };
+
+        case 'SET_SAVE_MODAL_OPEN':
+            return { ...state, isSaveModalOpen: action.payload };
+
+        case 'SET_FILENAME':
+            return { ...state, filename: action.payload };
 
         case 'RESET_ALL_NODE_STYLES': {
             const newState = deepClone(state);

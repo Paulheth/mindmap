@@ -14,8 +14,12 @@ const MenuBar = () => {
     const fileInputRef = useRef(null);
 
     const createNewMap = () => {
-        if (!state.autoSave && !confirm("Create new map? Unsaved changes may be lost.")) return;
-        if (state.autoSave && !confirm("Start a new map?")) return;
+        const needsSave = !state.autoSave;
+        if (needsSave) {
+            if (!confirm("Create new map? Unsaved changes may be lost.")) return;
+        } else {
+            if (!confirm("Start a new map?")) return;
+        }
 
         const cleanState = JSON.parse(JSON.stringify(initialState));
         dispatch({ type: 'LOAD_MAP', payload: cleanState });
@@ -33,6 +37,9 @@ const MenuBar = () => {
         const file = e.target.files[0];
         if (!file) return;
 
+        // Extract filename without extension
+        const rawName = file.name.replace(/\.(json|mm)$/i, '');
+
         const reader = new FileReader();
         reader.onload = (event) => {
             const text = event.target.result;
@@ -40,14 +47,15 @@ const MenuBar = () => {
                 if (file.name.toLowerCase().endsWith('.json')) {
                     const loadedState = JSON.parse(text);
                     if (!loadedState.root) throw new Error("Invalid JSON");
-                    dispatch({ type: 'LOAD_MAP', payload: loadedState });
+                    // Ensure filename is set from the file being imported, overriding whatever might be in the JSON or state
+                    dispatch({ type: 'LOAD_MAP', payload: { ...loadedState, filename: rawName } });
                     showToast("Map loaded from JSON");
                 } else {
                     const parsedData = parseMMFile(text);
                     if (parsedData?.root) {
                         dispatch({
                             type: 'LOAD_MAP',
-                            payload: { ...initialState, ...parsedData }
+                            payload: { ...initialState, ...parsedData, filename: rawName }
                         });
                         showToast("Map loaded from .mm");
                     }
@@ -72,11 +80,12 @@ const MenuBar = () => {
         URL.revokeObjectURL(url);
     };
 
-    // Quick Save: Defaults to .mm
+    // Quick Save: Defaults to .mm and current filename
     const handleQuickSave = () => {
         const content = generateMMFileContent(state);
-        saveFile(content, 'mindmap.mm', 'application/xml');
-        showToast("Map saved as mindmap.mm");
+        const name = state.filename || 'mindmap';
+        saveFile(content, `${name}.mm`, 'application/xml');
+        showToast(`Map saved as ${name}.mm`);
     };
 
     // Modal Save Confirm
@@ -84,6 +93,9 @@ const MenuBar = () => {
         let content = '';
         let mimeType = '';
         let extension = '';
+
+        // Update filename in state
+        dispatch({ type: 'SET_FILENAME', payload: filename });
 
         if (format === 'json') {
             content = JSON.stringify(state, null, 2);
@@ -134,7 +146,10 @@ const MenuBar = () => {
                 </div>
             </div>
 
-            <div className="logo-area">Mind Map Manager</div>
+            <div className="logo-area">
+                Mind Map Manager
+                {state.filename && <span style={{ opacity: 0.6, fontSize: '0.8em', marginLeft: '10px' }}>&mdash; {state.filename}</span>}
+            </div>
 
             {user && (
                 <div className="user-area" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' }}>

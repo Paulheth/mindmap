@@ -59,6 +59,11 @@ const generateNodeXml = (node, isRoot = false) => {
         xml += ` NOTE="${escapeXml(node.note)}"`;
     }
 
+    // Timeline Dot Color (Custom Attribute)
+    if (node.dateColor) {
+        xml += ` DATE_COLOR="${escapeXml(node.dateColor)}"`;
+    }
+
     xml += `>`;
 
     // 5. Rich Content Note (Standard FreeMind way)

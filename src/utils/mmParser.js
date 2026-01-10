@@ -20,6 +20,7 @@ export const parseMMFile = (xmlContent) => {
         const folded = xmlNode.getAttribute("FOLDED") === "true";
         const position = xmlNode.getAttribute("POSITION") || xmlNode.getAttribute("position");
         const dateAttr = xmlNode.getAttribute("DATE") || xmlNode.getAttribute("date");
+        const dateColorAttr = xmlNode.getAttribute("DATE_COLOR") || xmlNode.getAttribute("date_color");
         const noteAttr = xmlNode.getAttribute("NOTE") || xmlNode.getAttribute("note");
 
         let noteContent = noteAttr || null;
@@ -51,6 +52,7 @@ export const parseMMFile = (xmlContent) => {
             id,
             text,
             date: dateAttr || null,
+            dateColor: dateColorAttr || null,
             note: noteContent,
             style,
             // Capture side preference

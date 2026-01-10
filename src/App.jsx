@@ -1,4 +1,3 @@
-```javascript
 import React from 'react';
 import { MapProvider, useMap } from './context/MapContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -43,7 +42,9 @@ const MainLayout = () => {
 const App = () => {
   return (
     <AuthProvider>
-      <MainLayout />
+      <ToastProvider>
+        <MainLayout />
+      </ToastProvider>
     </AuthProvider>
   );
 };

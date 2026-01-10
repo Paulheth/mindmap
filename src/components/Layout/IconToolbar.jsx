@@ -126,8 +126,9 @@ const IconToolbar = () => {
             <div className="toolbar-group">
                 <button title="Save Map (.mm)" onClick={() => {
                     const xmlContent = generateMMFileContent(state);
-                    downloadFile(xmlContent, 'mindmap.mm', 'text/xml');
-                    showToast("Map saved as mindmap.mm");
+                    const name = state.filename || 'mindmap';
+                    downloadFile(xmlContent, `${name}.mm`, 'text/xml');
+                    showToast(`Map saved as ${name}.mm`);
                 }}><IconSave /></button>
 
                 <label className="autosave-toggle" title="Toggle Auto Save" style={{ display: 'flex', alignItems: 'center', fontSize: '0.8rem', marginLeft: 8, cursor: 'pointer', userSelect: 'none' }}>
@@ -152,6 +153,7 @@ const IconToolbar = () => {
                         if (!file) return;
 
                         const isMM = file.name.toLowerCase().endsWith('.mm');
+                        const rawName = file.name.replace(/\.(json|mm)$/i, '');
 
                         const reader = new FileReader();
                         reader.onload = (event) => {
@@ -166,7 +168,8 @@ const IconToolbar = () => {
                                 }
 
                                 if (payload && payload.root) {
-                                    dispatch({ type: 'LOAD_MAP', payload });
+                                    // Inject filename into payload
+                                    dispatch({ type: 'LOAD_MAP', payload: { ...payload, filename: rawName } });
                                 } else {
                                     alert("Invalid file structure");
                                 }
