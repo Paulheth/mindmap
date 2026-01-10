@@ -16,7 +16,7 @@ import {
  * @param {number} spacingFactor - 0 (Tight) to 10 (Loose). Default 5.
  * @returns {Object} { nodes: { [id]: {x,y} }, width, height }
  */
-export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFactor = 5) => {
+export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFactor = 5, previousPositions = {}) => {
     // 0. Safety Checks
     if (!rootNode) return { nodes: {}, width: 100, height: 100 };
 
@@ -25,8 +25,8 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
 
         // Config defaults in case of weirdness
         const safeSpacing = Number.isFinite(spacingFactor) ? spacingFactor : 5;
-        const nodeSep = 20 + (safeSpacing * 2); // Vertical gap
-        const levelSep = 40 + (safeSpacing * 5); // Horizontal gap
+        const nodeSep = 10 + (safeSpacing * 1); // Vertical gap (Tighter)
+        const levelSep = 60 + (safeSpacing * 8); // Horizontal gap (Wider)
 
         // ---------------------------------------------------------
         // 1. MICRO LAYOUT (Calculate Branch Shapes)
@@ -44,7 +44,7 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
                 let childBlockHeight = 0;
                 let childBlockWidth = 0;
 
-                if (node.children && node.children.length > 0) {
+                if (!node.isCollapsed && node.children && node.children.length > 0) {
                     node.children.forEach((child, i) => {
                         const childLayout = measure(child);
                         childBlockHeight += childLayout.totalHeight + (i > 0 ? nodeSep : 0);
@@ -72,18 +72,14 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
             const rootLayout = measure(l1Node);
 
             // Pass 2: Position (Flatten) using direct node traversal
-            // Avoids O(N^2) lookup
             const flatten = (node, x, y) => {
-                // Ensure we have measured info
                 const info = localNodes[node.id];
-                if (!info) return; // Should not happen
+                if (!info) return;
 
-                // Set relative position for this node
                 info.relX = x;
                 info.relY = y;
 
-                // Position children
-                if (node.children && node.children.length > 0) {
+                if (!node.isCollapsed && node.children && node.children.length > 0) {
                     let currentY = -(info.childBlockHeight / 2);
 
                     node.children.forEach(child => {
@@ -94,16 +90,7 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
                         const childY = currentY + (childH / 2);
 
                         const dir = direction === 'RIGHT' ? 1 : -1;
-                        // Parent is at (x,y). Child X is offset by parent width + gap + child width/2
                         const childRelX = (info.itemWidth / 2 + levelSep + childInfo.itemWidth / 2) * dir;
-
-                        // Recursive call with ACCUMULATED relative coordinates
-                        // Wait, calculateBranchLayout wants coordinates relative to l1Node (0,0)
-                        // x/y passed in here are relative to l1Node.
-                        // So we pass x + childRelX, y + childY??
-                        // 
-                        // Actually, let's keep the logic simple:
-                        // flatten sets the finalized coordinate relative to l1Node.
 
                         flatten(child, x + childRelX, y + childY);
 
@@ -116,7 +103,7 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
 
             return {
                 ...rootLayout,
-                nodes: localNodes // Now contains populated relX/relY
+                nodes: localNodes
             };
         };
 
@@ -124,9 +111,9 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
         // 2. MACRO LAYOUT (Force Simulation for L1 Islands)
         // ---------------------------------------------------------
 
+        // Start with Root at 0,0
         nodes[rootNode.id] = { x: 0, y: 0 };
 
-        // If no children, early return
         if (!rootNode.children || rootNode.children.length === 0) {
             return { nodes, width: 200, height: 200 };
         }
@@ -134,61 +121,74 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
         const l1Nodes = rootNode.children.map((child, i) => {
             const isRight = i % 2 === 0;
             const direction = isRight ? 'RIGHT' : 'LEFT';
-
-            // Safety: Ensure child has ID
             if (!child.id) child.id = `fallback-${i}`;
 
             const layout = calculateBranchLayout(child, direction);
-
-            // Radius estimation: Max dimension / 2 + padding
             const radius = (Math.max(layout.totalWidth, layout.totalHeight) / 2) + 20;
 
-            return {
+            // Seed Position Logic
+            let initialX = Math.cos((i / rootNode.children.length) * Math.PI * 2) * 200;
+            let initialY = Math.sin((i / rootNode.children.length) * Math.PI * 2) * 200;
+
+            // If we have a previous position, USE IT to minimize jumpiness
+            if (previousPositions && previousPositions[child.id]) {
+                initialX = previousPositions[child.id].x;
+                initialY = previousPositions[child.id].y;
+            }
+
+            const nodeObj = {
                 id: child.id,
                 ...layout,
                 direction,
-                // Scatter initial positions
-                x: Math.cos((i / rootNode.children.length) * Math.PI * 2) * 200,
-                y: Math.sin((i / rootNode.children.length) * Math.PI * 2) * 200,
+                x: initialX,
+                y: initialY,
                 radius: radius
             };
+
+            // Respect Manual Positioning (Strongest override)
+            if (child.x !== null && child.x !== undefined && child.y !== null && child.y !== undefined) {
+                nodeObj.fx = child.x;
+                nodeObj.fy = child.y;
+                nodeObj.x = child.x;
+                nodeObj.y = child.y;
+            }
+
+            return nodeObj;
         });
 
-        // Create simulation nodes including dummy root
+        // Create simulation nodes including dummy root (fixed at 0,0)
         const simNodes = [...l1Nodes, { id: 'root', x: 0, y: 0, fx: 0, fy: 0 }];
 
         const simulation = forceSimulation(simNodes)
-            .force("center", forceX(0).strength(0.05))
-            .force("centerY", forceY(0).strength(0.05))
+            .alpha(0.1) // Start very cold
+            .alphaDecay(0.02)
+            .force("x", forceX(d => {
+                if (d.id === 'root') return 0;
+                return d.direction === 'RIGHT' ? 300 : -300;
+            }).strength(0.01)) // Bare minimum to suggest a side
+            .force("y", forceY(0).strength(0.01)) // Very weak centering
             .force("link", forceLink(l1Nodes.map(d => ({ source: 'root', target: d.id })))
                 .id(d => d.id)
                 .distance(d => {
-                    // Check target existence safely
-                    const target = d.target; // Node object or ID
+                    const target = d.target;
                     let h = 100;
-                    // If it's the node object, use totalHeight
-                    if (typeof target === 'object' && target.totalHeight) {
-                        h = target.totalHeight;
-                    }
-                    // If we are looking up by ID in l1Nodes (manual simulation)
+                    if (typeof target === 'object' && target.totalHeight) h = target.totalHeight;
                     else if (typeof target === 'string') {
                         const found = l1Nodes.find(n => n.id === target);
                         if (found) h = found.totalHeight;
                     }
-
-                    return 150 + (Math.min(h, 600) * 0.6) + (safeSpacing * 15);
+                    return 50 + (Math.min(h, 600) * 0.4) + (safeSpacing * 5);
                 })
-                .strength(0.5)
+                .strength(0.2)
             )
             .force("charge", forceManyBody().strength(d => {
-                // Heavier repulsion for larger subtrees
-                return -500 - (d.radius * 3);
+                return -50 - (d.radius * 0.5);
             }))
-            .force("collide", forceCollide().radius(d => d.radius + 30).strength(1));
+            .force("collide", forceCollide().radius(d => d.radius + 30).strength(0.5));
 
-        // Run synchronously
+        // Run simulation
         simulation.stop();
-        const NUM_TICKS = 300;
+        const NUM_TICKS = 150; // Fewer ticks + low alpha = smoother transitions
         for (let i = 0; i < NUM_TICKS; ++i) {
             simulation.tick();
         }
@@ -198,82 +198,56 @@ export const calculateMindMapLayout = (rootNode, nodeDimensions = {}, spacingFac
         // ---------------------------------------------------------
 
         l1Nodes.forEach(l1 => {
-            // l1 is now the positioned "Sub-Root"
             if (!l1.nodes) return;
-
             Object.keys(l1.nodes).forEach(descendantId => {
+                // center nodes around the simulated center
                 const relPos = l1.nodes[descendantId];
+                const dims = nodeDimensions[descendantId] || { width: 100, height: 40 };
+
                 nodes[descendantId] = {
-                    x: l1.x + relPos.relX, // Note: we named it relX in flatten
-                    y: l1.y + relPos.relY
+                    x: l1.x + relPos.relX - (dims.width / 2),
+                    y: l1.y + relPos.relY - (dims.height / 2)
                 };
             });
-
-            // Don't forget the l1 node itself (relative 0,0) - already handled by flatten logic?
-            // Wait, flatten(l1Node, 0, 0) sets l1.nodes[l1Node.id] = {relX:0, relY:0}.
-            // So the loop above handles the l1 node too.
         });
 
+        // Update L1 Node itself (it's not in l1.nodes? Wait, verify flatten logic)
+        // Previous flatten logic put l1Node in localNodes[l1Node.id].
+        // So the loop above HANDLES the L1 node too.
+        // BUT we need to make sure the ROOT is handled.
+
+        // Root is special, it's at 0,0 but we need to center it visually
+        const rDims = nodeDimensions[rootNode.id] || { width: 100, height: 40 };
+        nodes[rootNode.id] = {
+            x: -rDims.width / 2,
+            y: -rDims.height / 2
+        };
+
         // ---------------------------------------------------------
-        // 4. BOUNDS & NORMALIZE
+        // 4. BOUNDS Check (Meta only, no shifting)
         // ---------------------------------------------------------
 
         let minX = Infinity, maxX = -Infinity;
         let minY = Infinity, maxY = -Infinity;
-
-        const checkBounds = (id, x, y) => {
-            const dims = nodeDimensions[id] || { width: 100, height: 40 };
-            const w = dims.width || 100;
-            const h = dims.height || 40;
-            if (x - w / 2 < minX) minX = x - w / 2;
-            if (x + w / 2 > maxX) maxX = x + w / 2;
-            if (y - h / 2 < minY) minY = y - h / 2;
-            if (y + h / 2 > maxY) maxY = y + h / 2;
-        };
-
-        // Add root explicitly
-        checkBounds(rootNode.id, 0, 0);
-
-        Object.keys(nodes).forEach(id => {
-            checkBounds(id, nodes[id].x, nodes[id].y);
+        Object.values(nodes).forEach(n => {
+            if (n.x < minX) minX = n.x;
+            if (n.x > maxX) maxX = n.x;
+            if (n.y < minY) minY = n.y;
+            if (n.y > maxY) maxY = n.y;
         });
 
-        if (minX === Infinity) return { nodes: {}, width: 100, height: 100 };
-
-        const PADDING = 200;
-        const width = (maxX - minX) + (PADDING * 2);
-        const height = (maxY - minY) + (PADDING * 2);
-
-        const shifted = {};
-
-        // Root
-        const rDims = nodeDimensions[rootNode.id] || { width: 100, height: 40 };
-        shifted[rootNode.id] = {
-            x: 0 - minX + PADDING - (rDims.width / 2),
-            y: 0 - minY + PADDING - (rDims.height / 2)
+        // Return raw nodes (centered at Origin)
+        // Return calculated width/height for container sizing if needed
+        return {
+            nodes,
+            width: (maxX - minX) + 1000,
+            height: (maxY - minY) + 1000
         };
-
-        Object.keys(nodes).forEach(id => {
-            // We already centered them in calculation?
-            // No, our calculations yielded CENTER coordinates.
-            // The renderer expects Top-Left?
-            // Usually renderer: style={{ left: node.x, top: node.y }}
-            // If our x/y is center, we should subtract width/2.
-
-            const dims = nodeDimensions[id] || { width: 100, height: 40 };
-            shifted[id] = {
-                x: nodes[id].x - minX + PADDING - (dims.width / 2),
-                y: nodes[id].y - minY + PADDING - (dims.height / 2)
-            };
-        });
-
-        return { nodes: shifted, width, height };
 
     } catch (error) {
         console.error("Layout Engine Crash Detected:", error);
-        // Fallback: Place everything at zero or simple list to avoid white screen
         const fallbackNodes = {};
-        if (rootNode) fallbackNodes[rootNode.id] = { x: 500, y: 500 };
+        if (rootNode) fallbackNodes[rootNode.id] = { x: 0, y: 0 };
         return { nodes: fallbackNodes, width: 1000, height: 1000 };
     }
 };

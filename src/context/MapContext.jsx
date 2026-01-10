@@ -9,6 +9,8 @@ export const initialNode = {
     text: 'Central Topic',
     date: null,
     style: {},
+    x: null, // Manual Layout Override X
+    y: null, // Manual Layout Override Y
     isCollapsed: false,
     children: []
 };
@@ -94,6 +96,17 @@ const mapReducer = (state, action) => {
                     Object.assign(node, updates);
                 }
             });
+            return newState;
+        }
+
+        case 'UPDATE_NODE_POSITION': {
+            const newState = deepClone(state);
+            const { id, x, y } = action.payload;
+            const node = findNode(newState.root, id);
+            if (node) {
+                node.x = x;
+                node.y = y;
+            }
             return newState;
         }
 

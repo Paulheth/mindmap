@@ -12,18 +12,11 @@
 }
 
 .map-canvas {
-    display: inline-flex;
-    /* Allows growth based on content */
-    min-width: 100%;
-    min-height: 100%;
+    display: block;
+    width: 100%;
+    height: 100%;
     position: relative;
-    padding: 100px;
-    /* Padding for the tree to breathe */
     box-sizing: border-box;
-    align-items: center;
-    /* Center vertically initially */
-    justify-content: center;
-    /* Center horizontally */
 }
 
 /* Force width constraint for wrapping in Spread Mode */

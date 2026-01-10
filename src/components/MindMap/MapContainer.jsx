@@ -19,9 +19,11 @@ const MapContainer = () => {
     // Calculate Layout whenever tree or dimensions change
     // Only if we are in MAP view? Or always?
     // Optimization: Only layout if view is map.
+    // Calculate Layout whenever tree or dimensions change
     useLayoutEffect(() => {
         if (!state.root || state.view !== 'map') return;
-        const layout = calculateMindMapLayout(state.root, nodeDimensions, state.layoutSpacing);
+        // Pass current (previous) positions to seed the next layout
+        const layout = calculateMindMapLayout(state.root, nodeDimensions, state.layoutSpacing, nodePositions);
         setNodePositions(layout.nodes || {});
         setCanvasSize({ width: layout.width || 0, height: layout.height || 0 });
     }, [state.root, nodeDimensions, state.view, state.layoutSpacing]);
@@ -89,14 +91,23 @@ const MapContainer = () => {
     }
 
     // Panning Logic (Local state for performance, sync to context on end)
-    const [localPan, setLocalPan] = useState(state.pan || { x: 0, y: 0 });
+    // Default to Center of Screen if state.pan is 0,0
+    const [localPan, setLocalPan] = useState(() => {
+        if (state.pan && (state.pan.x !== 0 || state.pan.y !== 0)) return state.pan;
+        return { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    });
+
     const isDragging = useRef(false);
     const lastMousePos = useRef({ x: 0, y: 0 });
 
     // Sync local pan if context changes external to dragging (e.g. load)
     useEffect(() => {
         if (!isDragging.current && state.pan) {
-            setLocalPan(state.pan);
+            // Only update if significantly different (avoid override loops)
+            // or if we want to enforce external changes
+            if (Math.abs(state.pan.x - localPan.x) > 1 || Math.abs(state.pan.y - localPan.y) > 1) {
+                setLocalPan(state.pan);
+            }
         }
     }, [state.pan]);
 
@@ -134,6 +145,51 @@ const MapContainer = () => {
         if (isDragging.current) {
             isDragging.current = false;
             dispatch({ type: 'SET_PAN', payload: localPan });
+        }
+    };
+
+    // --- Manual Node Repositioning (Drag 2nd Level) ---
+    const handleDragOver = (e) => {
+        e.preventDefault(); // Allow drop
+        e.dataTransfer.dropEffect = "move";
+    };
+
+    const handleDrop = (e) => {
+        e.preventDefault();
+        const dragId = e.dataTransfer.getData('nodeId');
+        if (!dragId) return;
+
+        // Check if this node is a 2nd level node (child of root)
+        // We can check if its parent is 'root'. 
+        // Or simpler: Just allow setting x/y on ANY node, but LayoutEngine only respects it for L1 nodes currently.
+        // This is fine. Moving deeply nested nodes manually without logic support might be weird but safe.
+
+        // Calculate Canvas Coordinates
+        // Canvas is transformed by: translate(panX, panY) scale(zoom)
+        // Mouse ClientX/Y relative to Container
+        if (containerRef.current) {
+            const rect = containerRef.current.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+
+            // Apply Inverse Transform
+            // localPan is the current visual translation
+            // zoom is state.zoom
+            const zoom = state.zoom || 1;
+
+            // x_canvas = (x_screen - panX) / zoom
+            const canvasX = (mouseX - localPan.x) / zoom;
+            const canvasY = (mouseY - localPan.y) / zoom;
+
+            // We need to center the node? 
+            // The coordinates we set (node.x, node.y) are what the LayoutEngine treats as "Center" (for forces).
+            // So calculating the drop point as the new center is correct.
+
+            // Dispatch update
+            dispatch({
+                type: 'UPDATE_NODE_POSITION',
+                payload: { id: dragId, x: canvasX, y: canvasY }
+            });
         }
     };
 
@@ -184,6 +240,8 @@ const MapContainer = () => {
             onMouseUp={handleMouseUp}
             onMouseLeave={handleMouseLeave}
             onWheel={handleWheel}
+            onDragOver={handleDragOver}
+            onDrop={handleDrop}
         >
             <div
                 className={`map-canvas`}
@@ -195,18 +253,21 @@ const MapContainer = () => {
                     transformOrigin: '0 0' // Must be 0 0 for Top-Left based pan/zoom math to work correctly
                     // With FlexTree layout, center might be better, but let's test.
                     // If zoom is handled by simple scale, transform origin matters.
-                    // Default logic usually assumes 0 0 if we translate manually.
-                }}
-            >
                 <ConnectionsLayer />
-                <Node
-                    node={state.root}
-                    isRoot={true}
-                    level={0}
-                    positions={nodePositions}
-                    onReportSize={handleReportSize}
-                />
-                {/* Note Editor Popover */}
+                {state.root && nodePositions[state.root.id] && (
+                    <div style={{
+                        position: 'absolute',
+                        transform: `translate(${nodePositions[state.root.id].x}px, ${nodePositions[state.root.id].y}px)`
+                    }}>
+                        <Node
+                            node={state.root}
+                            isRoot={true}
+                            level={0}
+                            positions={nodePositions}
+                            onReportSize={handleReportSize}
+                        />
+                    </div>
+                )}
                 {state.editingNoteId && nodePositions[state.editingNoteId] && (() => {
                     const nodeId = state.editingNoteId;
                     const pos = nodePositions[nodeId];
