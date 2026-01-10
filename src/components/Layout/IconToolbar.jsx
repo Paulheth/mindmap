@@ -124,6 +124,41 @@ const IconToolbar = () => {
     const isTimeline = state.view === 'timeline';
     const disabledStyle = isTimeline ? { opacity: 0.3, pointerEvents: 'none' } : {};
 
+    // Existing Dates Logic (Phase 10)
+    const [isDatePopoverOpen, setIsDatePopoverOpen] = React.useState(false);
+    const datePopoverRef = React.useRef(null);
+
+    const existingDates = React.useMemo(() => {
+        const dates = new Set();
+        const traverse = (node) => {
+            if (!node) return;
+            if (node.date) dates.add(node.date);
+            if (node.children) node.children.forEach(traverse);
+        };
+        traverse(state.root);
+        return Array.from(dates).sort();
+    }, [state.root]);
+
+    const hasExistingDates = existingDates.length > 0;
+
+    React.useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (datePopoverRef.current && !datePopoverRef.current.contains(event.target) && !event.target.closest('.date-icon-btn')) {
+                setIsDatePopoverOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    const handleDateSelect = (date) => {
+        dispatch({
+            type: 'UPDATE_NODE',
+            payload: { ids: state.selectedIds, updates: { date: date, dateColor: null } }
+        });
+        setIsDatePopoverOpen(false);
+    };
+
     return (
         <div className="icon-toolbar">
             <div className="toolbar-group">
@@ -297,8 +332,40 @@ const IconToolbar = () => {
             </div>
 
             <div className="toolbar-group" style={disabledStyle}>
-                <div className="date-wrapper">
-                    <IconCalendar />
+                <div className="date-wrapper" style={{ position: 'relative' }}>
+                    {/* Calendar Icon - Interactive if dates exist */}
+                    <button
+                        className="date-icon-btn"
+                        onClick={() => !isTimeline && hasExistingDates && setIsDatePopoverOpen(!isDatePopoverOpen)}
+                        disabled={isTimeline || !hasExistingDates}
+                        title={hasExistingDates ? "Select Existing Date" : "No existing dates"}
+                        style={{
+                            color: hasExistingDates && !isTimeline ? '#3b82f6' : 'inherit',
+                            cursor: hasExistingDates && !isTimeline ? 'pointer' : 'default',
+                            width: 'auto', padding: '0 4px', border: 'none', background: 'transparent'
+                        }}
+                    >
+                        <IconCalendar />
+                    </button>
+
+                    {/* Quick Pick Dropdown */}
+                    {isDatePopoverOpen && (
+                        <div ref={datePopoverRef} className="date-popover">
+                            <div className="date-popover-header">Existing Dates</div>
+                            <div className="date-list">
+                                {existingDates.map(date => (
+                                    <div
+                                        key={date}
+                                        className="date-item"
+                                        onClick={() => handleDateSelect(date)}
+                                    >
+                                        {date}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     <input
                         type="date"
                         className="toolbar-date"
