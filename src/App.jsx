@@ -1,6 +1,8 @@
+```javascript
 import React from 'react';
 import { MapProvider, useMap } from './context/MapContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import { ToastProvider } from './context/ToastContext'; // Added import
 import MapContainer from './components/MindMap/MapContainer';
 import TimelineView from './components/Timeline/TimelineView';
 import MenuBar from './components/Layout/MenuBar';

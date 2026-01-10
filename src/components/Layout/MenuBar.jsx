@@ -1,7 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { useMap, initialState } from '../../context/MapContext';
 import { useAuth } from '../../context/AuthContext';
-import { v4 as uuidv4 } from 'uuid';
+import { useToast } from '../../context/ToastContext';
 import { parseMMFile } from '../../utils/mmParser';
 import { generateMMFileContent } from '../../utils/mmGenerator';
 import SaveMapModal from '../Modals/SaveMapModal';
@@ -10,8 +10,8 @@ import './MenuBar.css';
 const MenuBar = () => {
     const { state, dispatch } = useMap();
     const { user, logout } = useAuth();
+    const { showToast } = useToast();
     const fileInputRef = useRef(null);
-    const [openFileFilter, setOpenFileFilter] = useState('.mm,.json');
 
     const createNewMap = () => {
         if (!state.autoSave && !confirm("Create new map? Unsaved changes may be lost.")) return;
@@ -19,17 +19,14 @@ const MenuBar = () => {
 
         const cleanState = JSON.parse(JSON.stringify(initialState));
         dispatch({ type: 'LOAD_MAP', payload: cleanState });
+        showToast("New map created");
     };
 
-    const handleOpenFile = (filter) => {
-        setOpenFileFilter(filter);
-        // Timeout to allow state update to propagate to input 'accept' attribute
-        setTimeout(() => {
-            if (fileInputRef.current) {
-                fileInputRef.current.value = '';
-                fileInputRef.current.click();
-            }
-        }, 50);
+    const handleOpenFile = () => {
+        if (fileInputRef.current) {
+            fileInputRef.current.value = '';
+            fileInputRef.current.click();
+        }
     };
 
     const importMap = (e) => {
@@ -44,6 +41,7 @@ const MenuBar = () => {
                     const loadedState = JSON.parse(text);
                     if (!loadedState.root) throw new Error("Invalid JSON");
                     dispatch({ type: 'LOAD_MAP', payload: loadedState });
+                    showToast("Map loaded from JSON");
                 } else {
                     const parsedData = parseMMFile(text);
                     if (parsedData?.root) {
@@ -51,7 +49,7 @@ const MenuBar = () => {
                             type: 'LOAD_MAP',
                             payload: { ...initialState, ...parsedData }
                         });
-                        alert("Map imported successfully!");
+                        showToast("Map loaded from .mm");
                     }
                 }
             } catch (error) {
@@ -62,6 +60,26 @@ const MenuBar = () => {
         e.target.value = ''; // Reset input
     };
 
+    const saveFile = (content, filename, mimeType) => {
+        const blob = new Blob([content], { type: mimeType });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    };
+
+    // Quick Save: Defaults to .mm
+    const handleQuickSave = () => {
+        const content = generateMMFileContent(state);
+        saveFile(content, 'mindmap.mm', 'application/xml');
+        showToast("Map saved as mindmap.mm");
+    };
+
+    // Modal Save Confirm
     const handleSaveConfirm = (filename, format) => {
         let content = '';
         let mimeType = '';
@@ -77,15 +95,8 @@ const MenuBar = () => {
             extension = 'mm';
         }
 
-        const blob = new Blob([content], { type: mimeType });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${filename}.${extension}`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        saveFile(content, `${filename}.${extension}`, mimeType);
+        showToast("Map saved successfully");
     };
 
     return (
@@ -96,10 +107,10 @@ const MenuBar = () => {
                 <div className="dropdown">
                     <div className="dropdown-item" onClick={createNewMap}>New Map</div>
                     <div className="dropdown-separator"></div>
+                    <div className="dropdown-item" onClick={handleQuickSave}>Save</div>
                     <div className="dropdown-item" onClick={() => dispatch({ type: 'SET_SAVE_MODAL_OPEN', payload: true })}>Save As...</div>
                     <div className="dropdown-separator"></div>
-                    <div className="dropdown-item" onClick={() => handleOpenFile('.mm')}>Open (.mm)</div>
-                    <div className="dropdown-item" onClick={() => handleOpenFile('.json')}>Open (.json)</div>
+                    <div className="dropdown-item" onClick={handleOpenFile}>Open...</div>
                     <div className="dropdown-separator"></div>
                     {user && <div className="dropdown-item" onClick={logout}>Logout</div>}
                 </div>
@@ -137,7 +148,7 @@ const MenuBar = () => {
                 type="file"
                 ref={fileInputRef}
                 onChange={importMap}
-                accept={openFileFilter}
+                accept=".mm,.json"
                 style={{ display: 'none' }}
             />
 
