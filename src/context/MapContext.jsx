@@ -39,12 +39,12 @@ export const initialState = {
             console.error("Failed to load user default styles", e);
         }
         return {
-            0: { backgroundColor: '#2563eb', color: '#ffffff', fontSize: 24, fontWeight: 'bold' },
-            1: { backgroundColor: '#ef4444', color: '#ffffff', fontSize: 18, fontWeight: 'normal' },
-            2: { backgroundColor: '#22c55e', color: '#ffffff', fontSize: 16, fontWeight: 'normal' },
-            3: { backgroundColor: '#3b82f6', color: '#ffffff', fontSize: 14, fontWeight: 'normal' },
-            4: { backgroundColor: '#f59e0b', color: '#000000', fontSize: 14, fontWeight: 'normal' },
-            5: { backgroundColor: '#64748b', color: '#ffffff', fontSize: 12, fontWeight: 'normal' }
+            0: { backgroundColor: '#2563eb', color: '#ffffff', fontSize: 24, fontWeight: 'bold', borderRadius: 4 },
+            1: { backgroundColor: '#ef4444', color: '#ffffff', fontSize: 18, fontWeight: 'normal', borderRadius: 4 },
+            2: { backgroundColor: '#22c55e', color: '#ffffff', fontSize: 16, fontWeight: 'normal', borderRadius: 4 },
+            3: { backgroundColor: '#3b82f6', color: '#ffffff', fontSize: 14, fontWeight: 'normal', borderRadius: 25 },
+            4: { backgroundColor: '#f59e0b', color: '#000000', fontSize: 14, fontWeight: 'normal', borderRadius: 25 },
+            5: { backgroundColor: '#64748b', color: '#ffffff', fontSize: 12, fontWeight: 'normal', borderRadius: 25 }
         };
     })()
 };
@@ -245,10 +245,21 @@ const mapReducer = (state, action) => {
                 ...loadedState
             };
 
-            // Ensure levelStyles fall back to defaults
-            if (!newState.levelStyles) {
-                newState.levelStyles = initialState.levelStyles;
+            // Intelligent Merge of Level Styles
+            // We want to preserve user customizations (colors) but adopt new structure defaults (borderRadius)
+            // if the user hasn't explicitly defined them (which they couldn't have before today).
+            const defaultStyles = initialState.levelStyles || {};
+            const loadedStyles = newState.levelStyles || {};
+
+            const mergedLevelStyles = {};
+            // Level 0 to 5
+            for (let i = 0; i <= 5; i++) {
+                mergedLevelStyles[i] = {
+                    ...defaultStyles[i], // Start with new defaults (inc. borderRadius 25)
+                    ...(loadedStyles[i] || {}) // Overwrite with user saved overrides (colors)
+                };
             }
+            newState.levelStyles = mergedLevelStyles;
 
             // Sanitize all dates in the tree
             if (newState.root) {

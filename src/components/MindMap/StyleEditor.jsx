@@ -31,13 +31,26 @@ const StyleEditor = () => {
         }
     };
 
+    const stopProp = (e) => {
+        e.stopPropagation();
+        // Prevent wheel event propagation if scrolling inside modal
+        // But let default scroll happen if needed
+    };
+
     return (
-        <div className="style-editor-overlay">
+        <div className="style-editor-overlay"
+            onMouseDown={stopProp}
+            onMouseMove={stopProp}
+            onMouseUp={stopProp}
+            onWheel={stopProp}
+            onClick={stopProp} // Also stop clicks just in case
+        >
             <div className={`style-editor-modal ${isGlobal ? 'global-mode' : ''}`}>
                 <div className="style-editor-header">
                     <h3>{isGlobal ? 'Node Style Setup' : `Edit Style: Level ${editingStyleLevel}`}</h3>
                     <button onClick={close} className="close-btn">&times;</button>
                 </div>
+
 
                 {isGlobal && (
                     <div className="style-tabs">
@@ -85,6 +98,19 @@ const StyleEditor = () => {
                             value={currentStyle.fontSize || 14}
                             onChange={(e) => update('fontSize', parseInt(e.target.value))}
                         />
+                    </div>
+                    <div className="control-group">
+                        <label>Corner Radius (px)</label>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                            <input
+                                type="range"
+                                min="0" max="30"
+                                value={currentStyle.borderRadius || 0}
+                                onChange={(e) => update('borderRadius', parseInt(e.target.value))}
+                                style={{ flex: 1 }}
+                            />
+                            <span style={{ minWidth: 24, textAlign: 'right', fontSize: 12 }}>{currentStyle.borderRadius || 0}</span>
+                        </div>
                     </div>
 
                     {isGlobal && (

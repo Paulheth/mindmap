@@ -126,6 +126,7 @@ const Node = ({ node, positions, onReportSize, level = 0, idPrefix = '' }) => {
                     fontSize: effectiveStyle.fontSize ? `${effectiveStyle.fontSize}px` : undefined,
                     fontWeight: effectiveStyle.fontWeight,
                     fontStyle: effectiveStyle.fontStyle,
+                    borderRadius: effectiveStyle.borderRadius ? `${effectiveStyle.borderRadius}px` : undefined,
                     zIndex: 10,
                     position: 'relative' // relative to sit above border target? Target is absolute.
                 }}
