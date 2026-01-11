@@ -71,6 +71,23 @@ const findNode = (node, id) => {
     return null;
 };
 
+// Helper to sanitize corrupt dates (e.g. 202601-02-05 -> 2026-02-05)
+const sanitizeDate = (dateStr) => {
+    if (!dateStr) return null;
+    if (typeof dateStr !== 'string') return null;
+
+    // Standard ISO: YYYY-MM-DD
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return dateStr;
+
+    // Known corrupt format: YYYYXX-MM-DD (12 chars). 
+    // We strip the extra 2 digits after year.
+    if (/^\d{6}-\d{2}-\d{2}$/.test(dateStr)) {
+        return dateStr.substring(0, 4) + dateStr.substring(6);
+    }
+
+    return dateStr;
+};
+
 const mapReducer = (state, action) => {
     const deepClone = (obj) => JSON.parse(JSON.stringify(obj));
 
@@ -89,6 +106,11 @@ const mapReducer = (state, action) => {
             const newState = deepClone(state);
             const { ids, id, updates } = action.payload;
             const targets = ids || [id];
+
+            // Pre-sanitize date if present
+            if (updates.date) {
+                updates.date = sanitizeDate(updates.date);
+            }
 
             targets.forEach(targetId => {
                 if (!targetId) return;
@@ -217,20 +239,28 @@ const mapReducer = (state, action) => {
         case 'LOAD_MAP': {
             const loadedState = action.payload;
 
-            // Merge loaded state on top of initialState to ensure all required keys (like autoSave, levelStyles) exist.
-            // This prevents crashes if the imported file/parser lacks newer state properties.
+            // Merge loaded state on top of initialState
             const newState = {
                 ...initialState,
                 ...loadedState
             };
 
-            // Ensure levelStyles fall back to defaults if not present (redundant with spread above but explicitly safe)
+            // Ensure levelStyles fall back to defaults
             if (!newState.levelStyles) {
                 newState.levelStyles = initialState.levelStyles;
             }
 
-            // Auto-balance on load if it's a fresh import
+            // Sanitize all dates in the tree
             if (newState.root) {
+                const traverseAndSanitize = (node) => {
+                    if (node.date) {
+                        node.date = sanitizeDate(node.date);
+                    }
+                    if (node.children) node.children.forEach(traverseAndSanitize);
+                };
+                traverseAndSanitize(newState.root);
+
+                // Auto-balance on load if it's a fresh import (and maybe after sanitization?)
                 balanceTree(newState.root);
             }
 
@@ -292,6 +322,35 @@ const mapReducer = (state, action) => {
             if (node) {
                 node.isCollapsed = !node.isCollapsed;
             }
+            return newState;
+        }
+
+        case 'SET_EXPANSION_LEVEL': {
+            const newState = deepClone(state);
+            const targetLevel = action.payload; // Number or Infinity
+
+            const traverse = (node, currentLevel) => {
+                if (!node) return;
+
+                // Leaf nodes don't need collapse state managed really, but standardizing is good.
+                // If currentLevel < targetLevel, we want it EXPANDED (isCollapsed = false)
+                // If currentLevel >= targetLevel, we want it COLLAPSED (isCollapsed = true)
+                // Exception: Root usually stays expanded? Logic implies we expand UP TO level X.
+                // So if I say "Level 1", Root (L0) is expanded, its children (L1) are collapsed?
+                // Or Root (L0) expanded, Children (L1) expanded, Grandchildren (L2) collapsed?
+                // Usually "Expand to Level 1" means Level 1 nodes are visible.
+
+                if (node.children && node.children.length > 0) {
+                    if (currentLevel < targetLevel) {
+                        node.isCollapsed = false;
+                    } else {
+                        node.isCollapsed = true;
+                    }
+                    node.children.forEach(child => traverse(child, currentLevel + 1));
+                }
+            };
+
+            traverse(newState.root, 0); // Root is level 0
             return newState;
         }
 

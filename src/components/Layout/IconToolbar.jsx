@@ -190,6 +190,44 @@ const IconToolbar = () => {
         showToast("Fit to Screen");
     };
 
+    const IconLayers = () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+            <polyline points="2 17 12 22 22 17"></polyline>
+            <polyline points="2 12 12 17 22 12"></polyline>
+        </svg>
+    );
+
+    // Levels Logic
+    const [isLevelPopoverOpen, setIsLevelPopoverOpen] = React.useState(false);
+    const levelPopoverRef = React.useRef(null);
+
+    // Calculate Max Depth dynamically
+    const maxDepth = React.useMemo(() => {
+        const getDepth = (node, currentDepth) => {
+            if (!node.children || node.children.length === 0) return currentDepth;
+            return Math.max(...node.children.map(child => getDepth(child, currentDepth + 1)));
+        };
+        return state.root ? getDepth(state.root, 0) : 0;
+    }, [state.root]);
+
+    React.useEffect(() => {
+        const handleClickOutsideLevels = (event) => {
+            if (levelPopoverRef.current && !levelPopoverRef.current.contains(event.target) && !event.target.closest('.level-btn')) {
+                setIsLevelPopoverOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutsideLevels);
+        return () => document.removeEventListener('mousedown', handleClickOutsideLevels);
+    }, []);
+
+    const handleLevelSelect = (level) => {
+        // level: 1, 2, 3, or Infinity (All)
+        dispatch({ type: 'SET_EXPANSION_LEVEL', payload: level });
+        setIsLevelPopoverOpen(false);
+        showToast(level === Infinity ? "Expanded All" : `Expanded to Level ${level}`);
+    };
+
     // Existing Dates Logic (Phase 10)
     const [isDatePopoverOpen, setIsDatePopoverOpen] = React.useState(false);
     const datePopoverRef = React.useRef(null);
@@ -366,6 +404,31 @@ const IconToolbar = () => {
                 <div style={{ fontSize: 12, width: 30, textAlign: 'center' }}>{Math.round((state.zoom || 1) * 100)}%</div>
                 <button title="Zoom Out" onClick={() => dispatch({ type: 'SET_ZOOM', payload: Math.max((state.zoom || 1) - 0.1, 0.5) })} disabled={isTimeline}>-</button>
                 <button title="Fit to Screen" onClick={handleFitToScreen} disabled={isTimeline} style={{ marginLeft: 4 }}><IconMaximize /></button>
+
+                {/* Levels Expansion Button - Moved to Zoom Group */}
+                <div style={{ position: 'relative', marginLeft: 4, display: 'flex', alignItems: 'center' }}>
+                    <button
+                        className="level-btn"
+                        title="Expand Levels"
+                        onClick={() => !isTimeline && setIsLevelPopoverOpen(!isLevelPopoverOpen)}
+                        disabled={isTimeline}
+                        style={{ width: 'auto', padding: '0 4px', border: 'none', background: 'transparent' }}
+                    >
+                        <IconLayers />
+                    </button>
+                    {isLevelPopoverOpen && (
+                        <div ref={levelPopoverRef} className="date-popover" style={{ width: 100, left: '50%', transform: 'translateX(-50%)' }}>
+                            <div className="date-popover-header">Levels</div>
+                            <div className="date-list">
+                                {Array.from({ length: maxDepth }, (_, i) => i + 1).map(level => (
+                                    <div key={level} className="date-item" onClick={() => handleLevelSelect(level)}>Level {level}</div>
+                                ))}
+                                {maxDepth === 0 && <div className="date-item" style={{ color: '#94a3b8', fontStyle: 'italic', cursor: 'default' }}>No Levels</div>}
+                                <div className="date-item" style={{ borderTop: '1px solid #eee' }} onClick={() => handleLevelSelect(Infinity)}>All</div>
+                            </div>
+                        </div>
+                    )}
+                </div>
             </div>
 
             <div className="separator"></div>
@@ -390,7 +453,7 @@ const IconToolbar = () => {
             {/* Layout Density - Disabled in Timeline */}
             <div className="toolbar-group" style={disabledStyle}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: '#64748b' }}>
-                    <span>Vertical</span>
+                    <span>Narrow</span>
                     <input
                         type="range"
                         min="0"
