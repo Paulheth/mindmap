@@ -1,9 +1,11 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../context/AuthContext';
+import { Eye, EyeSlash } from '@phosphor-icons/react';
 import './Login.css';
 
 const Login = () => {
     const [isLogin, setIsLogin] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [remember, setRemember] = useState(true);
@@ -41,13 +43,27 @@ const Login = () => {
                     </div>
                     <div className="form-group">
                         <label>Password</label>
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            required
-                            minLength={4}
-                        />
+                        <div className="password-input-wrapper">
+                            <input
+                                type={showPassword ? "text" : "password"}
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                minLength={4}
+                            />
+                            <button
+                                type="button"
+                                className="password-toggle"
+                                onClick={() => setShowPassword(!showPassword)}
+                                tabIndex="-1" // Skip tab focus for better flow
+                            >
+                                {showPassword ? (
+                                    <EyeSlash size={20} weight="regular" color="#64748b" />
+                                ) : (
+                                    <Eye size={20} weight="regular" color="#64748b" />
+                                )}
+                            </button>
+                        </div>
                     </div>
 
                     {isLogin && (
