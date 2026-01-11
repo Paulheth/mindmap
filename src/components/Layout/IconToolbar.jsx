@@ -121,8 +121,74 @@ const IconToolbar = () => {
         </svg>
     );
 
+    const IconMaximize = () => (
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 3 21 3 21 9"></polyline>
+            <polyline points="9 21 3 21 3 15"></polyline>
+            <line x1="21" y1="3" x2="14" y2="10"></line>
+            <line x1="3" y1="21" x2="10" y2="14"></line>
+        </svg>
+    );
+
     const isTimeline = state.view === 'timeline';
     const disabledStyle = isTimeline ? { opacity: 0.3, pointerEvents: 'none' } : {};
+
+    // Existing Dates Logic (Phase 10)
+    // ... (omitted for brevity in replacement, will be kept by logic)
+    // Wait, replacing block requires context.
+
+    // Fit to Screen Logic
+    const handleFitToScreen = () => {
+        if (!state.nodePositions || Object.keys(state.nodePositions).length === 0) return;
+
+        const nodes = Object.values(state.nodePositions);
+        let minX = Infinity, maxX = -Infinity;
+        let minY = Infinity, maxY = -Infinity;
+
+        nodes.forEach(n => {
+            if (n.x < minX) minX = n.x;
+            if (n.x > maxX) maxX = n.x;
+            if (n.y < minY) minY = n.y;
+            if (n.y > maxY) maxY = n.y;
+        });
+
+        // Add padding (approx node size + margin)
+        const PADDING = 100;
+        minX -= PADDING;
+        maxX += PADDING;
+        minY -= PADDING;
+        maxY += PADDING;
+
+        const mapWidth = maxX - minX;
+        const mapHeight = maxY - minY;
+
+        if (mapWidth <= 0 || mapHeight <= 0) return;
+
+        // Container dimensions (Approximate, subtracting toolbar height ~50px and sidebar ~0px)
+        const containerWidth = window.innerWidth;
+        const containerHeight = window.innerHeight - 60; // Toolbar offset
+
+        // Calculate Scale
+        const scaleX = containerWidth / mapWidth;
+        const scaleY = containerHeight / mapHeight;
+        let newZoom = Math.min(scaleX, scaleY) * 0.95; // 95% fit
+        newZoom = Math.min(Math.max(0.1, newZoom), 2); // Clamp
+
+        // Calculate Center
+        const mapCenterX = (minX + maxX) / 2;
+        const mapCenterY = (minY + maxY) / 2;
+
+        const screenCenterX = containerWidth / 2;
+        const screenCenterY = containerHeight / 2; // + Toolbar offset/2 if needed, but simple center is fine
+
+        // New Pan = ScreenCenter - (MapCenter * Zoom)
+        const newPanX = screenCenterX - (mapCenterX * newZoom);
+        const newPanY = screenCenterY - (mapCenterY * newZoom);
+
+        dispatch({ type: 'SET_ZOOM', payload: newZoom });
+        dispatch({ type: 'SET_PAN', payload: { x: newPanX, y: newPanY } });
+        showToast("Fit to Screen");
+    };
 
     // Existing Dates Logic (Phase 10)
     const [isDatePopoverOpen, setIsDatePopoverOpen] = React.useState(false);
@@ -299,6 +365,7 @@ const IconToolbar = () => {
                 <button title="Zoom In" onClick={() => dispatch({ type: 'SET_ZOOM', payload: Math.min((state.zoom || 1) + 0.1, 2) })} disabled={isTimeline}>+</button>
                 <div style={{ fontSize: 12, width: 30, textAlign: 'center' }}>{Math.round((state.zoom || 1) * 100)}%</div>
                 <button title="Zoom Out" onClick={() => dispatch({ type: 'SET_ZOOM', payload: Math.max((state.zoom || 1) - 0.1, 0.5) })} disabled={isTimeline}>-</button>
+                <button title="Fit to Screen" onClick={handleFitToScreen} disabled={isTimeline} style={{ marginLeft: 4 }}><IconMaximize /></button>
             </div>
 
             <div className="separator"></div>
