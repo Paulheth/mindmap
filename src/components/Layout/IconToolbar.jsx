@@ -129,14 +129,22 @@ const IconToolbar = () => {
     const datePopoverRef = React.useRef(null);
 
     const existingDates = React.useMemo(() => {
-        const dates = new Set();
+        const dateMap = new Map(); // date -> color
         const traverse = (node) => {
             if (!node) return;
-            if (node.date) dates.add(node.date);
+            if (node.date) {
+                // If date not yet seen, or if current stored color is null but this node has one, update it.
+                // We prefer a color over null.
+                if (!dateMap.has(node.date) || (!dateMap.get(node.date) && node.dateColor)) {
+                    dateMap.set(node.date, node.dateColor);
+                }
+            }
             if (node.children) node.children.forEach(traverse);
         };
         traverse(state.root);
-        return Array.from(dates).sort();
+        return Array.from(dateMap.entries())
+            .sort((a, b) => a[0].localeCompare(b[0]))
+            .map(([date, color]) => ({ date, color }));
     }, [state.root]);
 
     const hasExistingDates = existingDates.length > 0;
@@ -151,10 +159,10 @@ const IconToolbar = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
-    const handleDateSelect = (date) => {
+    const handleDateSelect = (dateItem) => {
         dispatch({
             type: 'UPDATE_NODE',
-            payload: { ids: state.selectedIds, updates: { date: date, dateColor: null } }
+            payload: { ids: state.selectedIds, updates: { date: dateItem.date, dateColor: dateItem.color || null } }
         });
         setIsDatePopoverOpen(false);
     };
@@ -353,13 +361,18 @@ const IconToolbar = () => {
                         <div ref={datePopoverRef} className="date-popover">
                             <div className="date-popover-header">Existing Dates</div>
                             <div className="date-list">
-                                {existingDates.map(date => (
+                                {existingDates.map(item => (
                                     <div
-                                        key={date}
+                                        key={item.date}
                                         className="date-item"
-                                        onClick={() => handleDateSelect(date)}
+                                        onClick={() => handleDateSelect(item)}
+                                        style={{ display: 'flex', alignItems: 'center', gap: 8 }}
                                     >
-                                        {date}
+                                        {item.color && (
+                                            <div style={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: item.color }} />
+                                        )}
+                                        {!item.color && <div style={{ width: 12, height: 12 }} />} {/* Spacer */}
+                                        {item.date}
                                     </div>
                                 ))}
                             </div>
