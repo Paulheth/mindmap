@@ -12,15 +12,15 @@ const Login = () => {
     const [error, setError] = useState('');
     const { login, signup } = useAuth();
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setError('');
 
         try {
             if (isLogin) {
-                login(email, password, remember);
+                await login(email, password); // simplified signature, remember is unused in supabase logic currently
             } else {
-                signup(email, password);
+                await signup(email, password);
             }
         } catch (err) {
             setError(err.message);
