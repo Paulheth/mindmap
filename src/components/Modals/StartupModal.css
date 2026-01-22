@@ -43,6 +43,34 @@
     flex-direction: column;
     gap: 0.5rem;
     color: #334155;
+    text-align: left;
+    /* Align text left so labels start from left */
+}
+
+/* Added for row layout */
+.map-detail-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.95rem;
+}
+
+/* Ensure strong labels are distinct */
+.map-detail-row strong {
+    color: #475569;
+    font-weight: 600;
+}
+
+/* Ensure values are readable */
+.map-detail-row span {
+    color: #1e293b;
+    font-weight: 500;
+    text-align: right;
+    /* Ensure long titles align right or wrap properly */
+    max-width: 70%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .startup-actions {

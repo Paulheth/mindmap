@@ -17,8 +17,14 @@ const StartupModal = ({ isOpen, mapMetadata, onLoad, onNew }) => {
 
                 {mapMetadata && (
                     <div className="map-info">
-                        <strong>Last Modified:</strong>
-                        <span>{formatDate(mapMetadata.last_modified)}</span>
+                        <div className="map-detail-row">
+                            <strong>Map:</strong>
+                            <span>{mapMetadata.title || 'Untitled Map'}</span>
+                        </div>
+                        <div className="map-detail-row">
+                            <strong>Last Modified:</strong>
+                            <span>{formatDate(mapMetadata.last_modified)}</span>
+                        </div>
                     </div>
                 )}
 

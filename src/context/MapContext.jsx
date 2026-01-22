@@ -656,7 +656,9 @@ export const MapProvider = ({ children, userId }) => {
     }, [state, userId]);
 
     return (
-        </MapContext.Provider >
+        <MapContext.Provider value={{ state, dispatch, loadMapFromCloud, startNewMap }}>
+            {children}
+        </MapContext.Provider>
     );
 };
 
