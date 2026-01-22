@@ -18,6 +18,7 @@ export const initialNode = {
 
 export const initialState = {
     mapId: null, // Database ID
+    hasCheckedCloud: false, // Critical for race condition
     isStartupModalOpen: false,
     saveStatus: 'saved', // 'saving', 'saved', 'error'
     cloudMapMetadata: null, // { id, last_modified, title }
@@ -463,7 +464,15 @@ const mapReducer = (state, action) => {
             return {
                 ...state,
                 isStartupModalOpen: true,
+                hasCheckedCloud: true,
                 cloudMapMetadata: action.payload
+            };
+
+        case 'Check_COMPLETE_NO_MAP':
+            // If no map found, we just mark checked so auto-save can effectively "start" a new one
+            return {
+                ...state,
+                hasCheckedCloud: true
             };
 
         case 'CLOSE_STARTUP_MODAL':
@@ -518,6 +527,7 @@ export const MapProvider = ({ children, userId }) => {
         if (!userId) return;
 
         const checkCloudForMaps = async () => {
+            console.log("Checking cloud for maps...");
             try {
                 // Fetch ONLY metadata first to see if a map exists
                 const { data, error } = await supabase
@@ -529,6 +539,7 @@ export const MapProvider = ({ children, userId }) => {
                     .single();
 
                 if (data) {
+                    console.log("Map found:", data);
                     // Map found! Ask user what to do
                     dispatch({
                         type: 'FOUND_CLOUD_MAP',
@@ -539,15 +550,19 @@ export const MapProvider = ({ children, userId }) => {
                         }
                     });
                 } else {
+                    console.log("No maps found.");
                     // No map found, start fresh
-                    dispatch({ type: 'LOAD_MAP', payload: initialState });
+                    dispatch({ type: 'Check_COMPLETE_NO_MAP' }); // Just mark checked, allow auto-save to start
                 }
             } catch (e) {
+                console.log("Error checking maps (likely new user):", e);
                 // .single() returns error if 0 rows, which is fine (new user)
-                dispatch({ type: 'LOAD_MAP', payload: initialState });
+                dispatch({ type: 'Check_COMPLETE_NO_MAP' });
             }
-            checkCloudForMaps();
-        }, [userId]);
+        };
+
+        checkCloudForMaps();
+    }, [userId]);
 
     // Ref to track last saved content to prevent infinite loops and redundant saves
     const lastSavedContent = React.useRef(null);
@@ -555,26 +570,43 @@ export const MapProvider = ({ children, userId }) => {
     // Auto-save to Supabase (Debounced)
     React.useEffect(() => {
         if (!userId) return;
+
+        // CRITICAL: Block saving until we have checked for existing maps
+        // This prevents overwriting the "Last Map" with a blank default map on startup
+        if (!state.hasCheckedCloud) {
+            console.log("Auto-save blocked: Cloud check not complete.");
+            return;
+        }
+
         // Don't save if the modal is still open (user hasn't decided yet)
-        if (state.isStartupModalOpen) return;
+        if (state.isStartupModalOpen) {
+            console.log("Auto-save blocked: Startup modal is open.");
+            return;
+        }
 
         const saveToCloud = async () => {
             // Prevent saving if we haven't loaded yet or if state is empty
-            if (!state.root) return;
+            if (!state.root) {
+                console.log("Auto-save blocked: State root is empty.");
+                return;
+            }
 
             const mapContent = { ...state };
 
             // Clean up transient state before saving/comparing
             delete mapContent.isStartupModalOpen;
             delete mapContent.cloudMapMetadata;
-            delete mapContent.saveStatus; // Don't save status to DB
+            delete mapContent.saveStatus;
+            delete mapContent.hasCheckedCloud; // Don't save this
 
             // Check if content actually changed
             const contentString = JSON.stringify(mapContent);
             if (lastSavedContent.current === contentString) {
+                console.log("Auto-save skipped: No changes detected.");
                 return; // Nothing changed, skip save
             }
 
+            console.log("Initiating auto-save to cloud...");
             dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
 
             try {
@@ -606,6 +638,7 @@ export const MapProvider = ({ children, userId }) => {
                 // Update ref to current content so we don't save again
                 lastSavedContent.current = contentString;
                 dispatch({ type: 'SET_SAVE_STATUS', payload: 'saved' });
+                console.log("Auto-save successful.");
             } catch (e) {
                 console.error("Auto-save failed:", e);
                 dispatch({ type: 'SET_SAVE_STATUS', payload: 'error' });
