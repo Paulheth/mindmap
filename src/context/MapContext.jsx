@@ -490,6 +490,29 @@ const mapReducer = (state, action) => {
 export const MapProvider = ({ children, userId }) => {
     const [state, dispatch] = useReducer(mapReducer, initialState);
 
+    const loadMapFromCloud = async (mapId) => {
+        try {
+            const { data, error } = await supabase
+                .from('maps')
+                .select('*')
+                .eq('id', mapId)
+                .single();
+
+            if (data && data.content) {
+                dispatch({ type: 'LOAD_MAP', payload: data.content });
+                dispatch({ type: 'SET_MAP_ID', payload: data.id });
+                dispatch({ type: 'CLOSE_STARTUP_MODAL' });
+            }
+        } catch (e) {
+            console.error("Failed to load map:", e);
+        }
+    };
+
+    const startNewMap = () => {
+        dispatch({ type: 'LOAD_MAP', payload: initialState });
+        dispatch({ type: 'CLOSE_STARTUP_MODAL' });
+    };
+
     // Load data when userId changes (Switch to Cloud)
     React.useEffect(() => {
         if (!userId) return;
