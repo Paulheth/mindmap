@@ -487,35 +487,38 @@ export const MapProvider = ({ children, userId }) => {
     React.useEffect(() => {
         if (!userId) return;
 
-        const fetchLatestMap = async () => {
+        const checkCloudForMaps = async () => {
             try {
-                // Fetch the most recently modified map for this user
+                // Fetch ONLY metadata first to see if a map exists
                 const { data, error } = await supabase
                     .from('maps')
-                    .select('*')
+                    .select('id, last_modified, title')
                     .eq('user_id', userId)
                     .order('last_modified', { ascending: false })
                     .limit(1)
                     .single();
 
-                if (data && data.content) {
-                    // Load the map
-                    dispatch({ type: 'LOAD_MAP', payload: data.content });
-                    // Store the database ID so we update this row later
-                    dispatch({ type: 'SET_MAP_ID', payload: data.id });
+                if (data) {
+                    // Map found! Ask user what to do
+                    dispatch({
+                        type: 'FOUND_CLOUD_MAP',
+                        payload: {
+                            id: data.id,
+                            last_modified: data.last_modified,
+                            title: data.title
+                        }
+                    });
                 } else {
-                    // New user or no maps: Check if we have local data to migrate? 
-                    // For now, start fresh (or could migrate here)
+                    // No map found, start fresh
                     dispatch({ type: 'LOAD_MAP', payload: initialState });
                 }
             } catch (e) {
                 // .single() returns error if 0 rows, which is fine (new user)
-                // console.log("No existing maps found or error:", e);
                 dispatch({ type: 'LOAD_MAP', payload: initialState });
             }
         };
 
-        fetchLatestMap();
+        checkCloudForMaps();
     }, [userId]);
 
     // Auto-save to Supabase (Debounced)
