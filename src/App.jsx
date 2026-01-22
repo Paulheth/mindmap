@@ -7,10 +7,11 @@ import TimelineView from './components/Timeline/TimelineView';
 import MenuBar from './components/Layout/MenuBar';
 import IconToolbar from './components/Layout/IconToolbar';
 import Login from './components/Auth/Login';
+import StartupModal from './components/Modals/StartupModal';
 import './App.css';
 
 const AppContent = () => {
-  const { state } = useMap();
+  const { state, loadMapFromCloud, startNewMap } = useMap();
 
   return (
     <div className="app">
@@ -20,6 +21,13 @@ const AppContent = () => {
         {state.view === 'timeline' && <TimelineView />}
         <MapContainer hidden={state.view === 'timeline'} />
       </main>
+
+      <StartupModal
+        isOpen={state.isStartupModalOpen}
+        mapMetadata={state.cloudMapMetadata}
+        onLoad={() => loadMapFromCloud(state.cloudMapMetadata.id)}
+        onNew={startNewMap}
+      />
     </div>
   );
 };

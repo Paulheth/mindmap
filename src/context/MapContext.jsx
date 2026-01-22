@@ -1,5 +1,6 @@
 import React, { createContext, useReducer, useContext } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '../supabaseClient';
 import { balanceTree } from '../utils/treeBalancer';
 
 const MapContext = createContext();
@@ -16,6 +17,9 @@ export const initialNode = {
 };
 
 export const initialState = {
+    mapId: null, // Database ID
+    isStartupModalOpen: false,
+    cloudMapMetadata: null, // { id, last_modified, title }
     root: initialNode,
     nodePositions: {}, // Global layout state
     selectedIds: ['root'],
@@ -451,6 +455,23 @@ const mapReducer = (state, action) => {
             return newState;
         }
 
+        case 'SET_MAP_ID':
+            return { ...state, mapId: action.payload };
+
+        case 'FOUND_CLOUD_MAP':
+            return {
+                ...state,
+                isStartupModalOpen: true,
+                cloudMapMetadata: action.payload
+            };
+
+        case 'CLOSE_STARTUP_MODAL':
+            return {
+                ...state,
+                isStartupModalOpen: false,
+                cloudMapMetadata: null
+            };
+
         default:
             return state;
     }
@@ -462,33 +483,81 @@ const mapReducer = (state, action) => {
 export const MapProvider = ({ children, userId }) => {
     const [state, dispatch] = useReducer(mapReducer, initialState);
 
-    // Load data when userId changes
+    // Load data when userId changes (Switch to Cloud)
     React.useEffect(() => {
         if (!userId) return;
 
-        try {
-            const saved = localStorage.getItem(`mindMapData_${userId}`);
-            if (saved) {
-                const payload = JSON.parse(saved);
-                dispatch({ type: 'LOAD_MAP', payload });
-            } else {
-                // New user or no data: Load default/initial
-                // Dispatching LOAD_MAP with initialState ensures we reset if we switched from another user
+        const fetchLatestMap = async () => {
+            try {
+                // Fetch the most recently modified map for this user
+                const { data, error } = await supabase
+                    .from('maps')
+                    .select('*')
+                    .eq('user_id', userId)
+                    .order('last_modified', { ascending: false })
+                    .limit(1)
+                    .single();
+
+                if (data && data.content) {
+                    // Load the map
+                    dispatch({ type: 'LOAD_MAP', payload: data.content });
+                    // Store the database ID so we update this row later
+                    dispatch({ type: 'SET_MAP_ID', payload: data.id });
+                } else {
+                    // New user or no maps: Check if we have local data to migrate? 
+                    // For now, start fresh (or could migrate here)
+                    dispatch({ type: 'LOAD_MAP', payload: initialState });
+                }
+            } catch (e) {
+                // .single() returns error if 0 rows, which is fine (new user)
+                // console.log("No existing maps found or error:", e);
                 dispatch({ type: 'LOAD_MAP', payload: initialState });
             }
-        } catch (e) {
-            console.error("Failed to load map data", e);
-            dispatch({ type: 'LOAD_MAP', payload: initialState });
-        }
+        };
+
+        fetchLatestMap();
     }, [userId]);
 
-    // Auto-save on change
+    // Auto-save to Supabase (Debounced)
     React.useEffect(() => {
         if (!userId) return;
 
-        const timeout = setTimeout(() => {
-            localStorage.setItem(`mindMapData_${userId}`, JSON.stringify(state));
-        }, 500); // Debounce 500ms
+        const saveToCloud = async () => {
+            // Prevent saving if we haven't loaded yet or if state is empty
+            if (!state.root) return;
+
+            const mapContent = { ...state };
+            // Don't save transient UI state to DB if possible, but for now allow it for full restore
+
+            try {
+                const mapData = {
+                    user_id: userId,
+                    title: state.filename || 'Untitled Map',
+                    content: mapContent,
+                    last_modified: new Date().toISOString()
+                };
+
+                // If we have an ID, update existing. If not, insert new.
+                if (state.mapId) {
+                    mapData.id = state.mapId;
+                }
+
+                const { data, error } = await supabase
+                    .from('maps')
+                    .upsert(mapData)
+                    .select()
+                    .single();
+
+                if (data && !state.mapId) {
+                    // We just created a new map, save its ID so future updates go to the same row
+                    dispatch({ type: 'SET_MAP_ID', payload: data.id });
+                }
+            } catch (e) {
+                console.error("Auto-save failed:", e);
+            }
+        };
+
+        const timeout = setTimeout(saveToCloud, 2000); // Debounce 2s (Cloud is slower than local)
         return () => clearTimeout(timeout);
     }, [state, userId]);
 
