@@ -546,10 +546,11 @@ export const MapProvider = ({ children, userId }) => {
                 // .single() returns error if 0 rows, which is fine (new user)
                 dispatch({ type: 'LOAD_MAP', payload: initialState });
             }
-        };
+            checkCloudForMaps();
+        }, [userId]);
 
-        checkCloudForMaps();
-    }, [userId]);
+    // Ref to track last saved content to prevent infinite loops and redundant saves
+    const lastSavedContent = React.useRef(null);
 
     // Auto-save to Supabase (Debounced)
     React.useEffect(() => {
@@ -561,14 +562,20 @@ export const MapProvider = ({ children, userId }) => {
             // Prevent saving if we haven't loaded yet or if state is empty
             if (!state.root) return;
 
-            dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
-
             const mapContent = { ...state };
 
-            // Clean up transient state before saving these to JSON
+            // Clean up transient state before saving/comparing
             delete mapContent.isStartupModalOpen;
             delete mapContent.cloudMapMetadata;
             delete mapContent.saveStatus; // Don't save status to DB
+
+            // Check if content actually changed
+            const contentString = JSON.stringify(mapContent);
+            if (lastSavedContent.current === contentString) {
+                return; // Nothing changed, skip save
+            }
+
+            dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
 
             try {
                 const mapData = {
@@ -595,6 +602,9 @@ export const MapProvider = ({ children, userId }) => {
                     // We just created a new map, save its ID so future updates go to the same row
                     dispatch({ type: 'SET_MAP_ID', payload: data.id });
                 }
+
+                // Update ref to current content so we don't save again
+                lastSavedContent.current = contentString;
                 dispatch({ type: 'SET_SAVE_STATUS', payload: 'saved' });
             } catch (e) {
                 console.error("Auto-save failed:", e);
@@ -602,14 +612,12 @@ export const MapProvider = ({ children, userId }) => {
             }
         };
 
-        const timeout = setTimeout(saveToCloud, 1000); // Reduced delay to 1s
+        const timeout = setTimeout(saveToCloud, 2000); // 2s Debounce
         return () => clearTimeout(timeout);
     }, [state, userId]);
 
     return (
-        <MapContext.Provider value={{ state, dispatch, loadMapFromCloud, startNewMap }}>
-            {children}
-        </MapContext.Provider>
+        </MapContext.Provider >
     );
 };
 
