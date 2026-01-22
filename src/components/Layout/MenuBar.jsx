@@ -162,8 +162,13 @@ const MenuBar = () => {
                 Mind Map Manager
                 {state.filename && <span style={{ opacity: 0.6, fontSize: '0.8em', marginLeft: '10px' }}>&mdash; {state.filename}</span>}
                 <span
-                    title={state.saveError || ''}
-                    onClick={() => state.saveStatus === 'error' && state.saveError && alert(state.saveError)}
+                    title={state.saveError || 'Unknown Error'}
+                    onClick={() => {
+                        console.log("Current State:", state);
+                        if (state.saveStatus === 'error') {
+                            alert(`Save Error Details:\n${state.saveError || 'No specific error message captured.'}\n\nCheck console for full state.`);
+                        }
+                    }}
                     style={{
                         marginLeft: '15px',
                         fontSize: '0.7rem',
