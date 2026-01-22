@@ -21,6 +21,7 @@ export const initialState = {
     hasCheckedCloud: false, // Critical for race condition
     isStartupModalOpen: false,
     saveStatus: 'saved', // 'saving', 'saved', 'error'
+    saveError: null,
     cloudMapMetadata: null, // { id, last_modified, title }
     root: initialNode,
     nodePositions: {}, // Global layout state
@@ -482,11 +483,15 @@ const mapReducer = (state, action) => {
                 cloudMapMetadata: null
             };
 
-        case 'SET_SAVE_STATUS':
+        case 'SET_SAVE_STATUS': {
+            const status = typeof action.payload === 'string' ? action.payload : action.payload.status;
+            const error = typeof action.payload === 'object' ? action.payload.error : null;
             return {
                 ...state,
-                saveStatus: action.payload // 'saving', 'saved', 'error'
+                saveStatus: status, // 'saving', 'saved', 'error'
+                saveError: error
             };
+        }
 
         default:
             return state;
@@ -641,7 +646,7 @@ export const MapProvider = ({ children, userId }) => {
                 console.log("Auto-save successful.");
             } catch (e) {
                 console.error("Auto-save failed:", e);
-                dispatch({ type: 'SET_SAVE_STATUS', payload: 'error' });
+                dispatch({ type: 'SET_SAVE_STATUS', payload: { status: 'error', error: e.message } });
             }
         };
 

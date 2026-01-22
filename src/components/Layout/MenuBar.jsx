@@ -161,14 +161,17 @@ const MenuBar = () => {
             <div className="logo-area">
                 Mind Map Manager
                 {state.filename && <span style={{ opacity: 0.6, fontSize: '0.8em', marginLeft: '10px' }}>&mdash; {state.filename}</span>}
-                <span style={{
-                    marginLeft: '15px',
-                    fontSize: '0.7rem',
-                    padding: '2px 6px',
-                    borderRadius: '4px',
-                    backgroundColor: state.saveStatus === 'error' ? '#fee2e2' : state.saveStatus === 'saving' ? '#f1f5f9' : 'transparent',
-                    color: state.saveStatus === 'error' ? '#ef4444' : '#64748b'
-                }}>
+                <span
+                    title={state.saveError || ''}
+                    style={{
+                        marginLeft: '15px',
+                        fontSize: '0.7rem',
+                        padding: '2px 6px',
+                        borderRadius: '4px',
+                        backgroundColor: state.saveStatus === 'error' ? '#fee2e2' : state.saveStatus === 'saving' ? '#f1f5f9' : 'transparent',
+                        color: state.saveStatus === 'error' ? '#ef4444' : '#64748b',
+                        cursor: state.saveStatus === 'error' ? 'help' : 'default'
+                    }}>
                     {state.saveStatus === 'saving' ? 'Saving...' : state.saveStatus === 'error' ? 'Save Failed' : 'Cloud Saved'}
                 </span>
             </div>

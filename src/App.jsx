@@ -42,7 +42,7 @@ const MainLayout = () => {
   }
 
   return (
-    <MapProvider userId={user.id}>
+    <MapProvider key={user.id} userId={user.id}>
       <AppContent />
     </MapProvider>
   );
