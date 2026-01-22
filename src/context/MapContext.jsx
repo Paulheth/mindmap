@@ -19,6 +19,7 @@ export const initialNode = {
 export const initialState = {
     mapId: null, // Database ID
     isStartupModalOpen: false,
+    saveStatus: 'saved', // 'saving', 'saved', 'error'
     cloudMapMetadata: null, // { id, last_modified, title }
     root: initialNode,
     nodePositions: {}, // Global layout state
@@ -472,6 +473,12 @@ const mapReducer = (state, action) => {
                 cloudMapMetadata: null
             };
 
+        case 'SET_SAVE_STATUS':
+            return {
+                ...state,
+                saveStatus: action.payload // 'saving', 'saved', 'error'
+            };
+
         default:
             return state;
     }
@@ -524,13 +531,21 @@ export const MapProvider = ({ children, userId }) => {
     // Auto-save to Supabase (Debounced)
     React.useEffect(() => {
         if (!userId) return;
+        // Don't save if the modal is still open (user hasn't decided yet)
+        if (state.isStartupModalOpen) return;
 
         const saveToCloud = async () => {
             // Prevent saving if we haven't loaded yet or if state is empty
             if (!state.root) return;
 
+            dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
+
             const mapContent = { ...state };
-            // Don't save transient UI state to DB if possible, but for now allow it for full restore
+
+            // Clean up transient state before saving these to JSON
+            delete mapContent.isStartupModalOpen;
+            delete mapContent.cloudMapMetadata;
+            delete mapContent.saveStatus; // Don't save status to DB
 
             try {
                 const mapData = {
@@ -551,21 +566,25 @@ export const MapProvider = ({ children, userId }) => {
                     .select()
                     .single();
 
+                if (error) throw error;
+
                 if (data && !state.mapId) {
                     // We just created a new map, save its ID so future updates go to the same row
                     dispatch({ type: 'SET_MAP_ID', payload: data.id });
                 }
+                dispatch({ type: 'SET_SAVE_STATUS', payload: 'saved' });
             } catch (e) {
                 console.error("Auto-save failed:", e);
+                dispatch({ type: 'SET_SAVE_STATUS', payload: 'error' });
             }
         };
 
-        const timeout = setTimeout(saveToCloud, 2000); // Debounce 2s (Cloud is slower than local)
+        const timeout = setTimeout(saveToCloud, 1000); // Reduced delay to 1s
         return () => clearTimeout(timeout);
     }, [state, userId]);
 
     return (
-        <MapContext.Provider value={{ state, dispatch }}>
+        <MapContext.Provider value={{ state, dispatch, loadMapFromCloud, startNewMap }}>
             {children}
         </MapContext.Provider>
     );
