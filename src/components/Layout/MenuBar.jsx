@@ -13,6 +13,18 @@ const MenuBar = () => {
     const { showToast } = useToast();
     const fileInputRef = useRef(null);
 
+    const handleLogout = async () => {
+        try {
+            await logout();
+            // Force reload to clear all in-memory state
+            window.location.reload();
+        } catch (error) {
+            console.error("Logout failed:", error);
+            // Even if API fails, we should clear local state/redirect
+            window.location.href = '/';
+        }
+    };
+
     const createNewMap = () => {
         const needsSave = !state.autoSave;
         if (needsSave) {
@@ -124,7 +136,7 @@ const MenuBar = () => {
                     <div className="dropdown-separator"></div>
                     <div className="dropdown-item" onClick={handleOpenFile}>Open...</div>
                     <div className="dropdown-separator"></div>
-                    {user && <div className="dropdown-item" onClick={logout}>Logout</div>}
+                    {user && <div className="dropdown-item" onClick={handleLogout}>Logout</div>}
                 </div>
             </div>
 
@@ -154,7 +166,7 @@ const MenuBar = () => {
             {user && (
                 <div className="user-area" style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: '10px', fontSize: '0.9rem' }}>
                     <span>{user.email}</span>
-                    <button onClick={logout} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>Logout</button>
+                    <button onClick={handleLogout} style={{ padding: '2px 8px', fontSize: '0.8rem' }}>Logout</button>
                 </div>
             )}
 
