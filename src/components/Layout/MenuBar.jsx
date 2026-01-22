@@ -163,6 +163,7 @@ const MenuBar = () => {
                 {state.filename && <span style={{ opacity: 0.6, fontSize: '0.8em', marginLeft: '10px' }}>&mdash; {state.filename}</span>}
                 <span
                     title={state.saveError || ''}
+                    onClick={() => state.saveStatus === 'error' && state.saveError && alert(state.saveError)}
                     style={{
                         marginLeft: '15px',
                         fontSize: '0.7rem',
@@ -170,9 +171,10 @@ const MenuBar = () => {
                         borderRadius: '4px',
                         backgroundColor: state.saveStatus === 'error' ? '#fee2e2' : state.saveStatus === 'saving' ? '#f1f5f9' : 'transparent',
                         color: state.saveStatus === 'error' ? '#ef4444' : '#64748b',
-                        cursor: state.saveStatus === 'error' ? 'help' : 'default'
+                        cursor: state.saveStatus === 'error' ? 'pointer' : 'default',
+                        userSelect: 'none'
                     }}>
-                    {state.saveStatus === 'saving' ? 'Saving...' : state.saveStatus === 'error' ? 'Save Failed' : 'Cloud Saved'}
+                    {state.saveStatus === 'saving' ? 'Saving...' : state.saveStatus === 'error' ? 'Save Failed (Click for info)' : 'Cloud Saved'}
                 </span>
             </div>
 

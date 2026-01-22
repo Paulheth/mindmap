@@ -646,7 +646,8 @@ export const MapProvider = ({ children, userId }) => {
                 console.log("Auto-save successful.");
             } catch (e) {
                 console.error("Auto-save failed:", e);
-                dispatch({ type: 'SET_SAVE_STATUS', payload: { status: 'error', error: e.message } });
+                const errorMessage = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
+                dispatch({ type: 'SET_SAVE_STATUS', payload: { status: 'error', error: errorMessage } });
             }
         };
 
