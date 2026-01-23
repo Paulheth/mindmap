@@ -146,21 +146,16 @@ const MenuBar = () => {
     };
 
     // Export to File (Local)
-    const handleExport = (format) => {
+    // Export to File (Local) - now only supports .mm
+    const handleExport = () => {
         let content = '';
         let mimeType = '';
         let extension = '';
         const filename = state.filename || 'mindmap';
 
-        if (format === 'json') {
-            content = JSON.stringify(state, null, 2);
-            mimeType = 'application/json';
-            extension = 'json';
-        } else {
-            content = generateMMFileContent(state);
-            mimeType = 'application/xml';
-            extension = 'mm';
-        }
+        content = generateMMFileContent(state);
+        mimeType = 'application/xml';
+        extension = 'mm';
 
         saveFile(content, `${filename}.${extension}`, mimeType);
         showToast("Map exported to file");
@@ -173,27 +168,7 @@ const MenuBar = () => {
     };
 
     // Save As New (Cloud Clone)
-    const handleSaveAsNew = async () => {
-        const maps = await listMaps();
-        if (maps.length >= 10) {
-            alert("Cannot clone map: Storage limit (10 maps) reached.");
-            return;
-        }
 
-        const newName = prompt("Enter name for copy:", (state.filename || 'MindMap') + " Copy");
-        if (!newName) return;
-
-        // Create copy of state without ID
-        const newState = { ...state, filename: newName };
-        delete newState.mapId;
-        delete newState.cloudMapMetadata;
-
-        // Load it (which triggers clean slate in Context)
-        dispatch({ type: 'LOAD_MAP', payload: newState });
-        // Force save to generate new ID
-        await saveMapToCloud(newState);
-        showToast("Map cloned successfully");
-    };
 
 
 
@@ -204,19 +179,12 @@ const MenuBar = () => {
                 File
                 <div className="dropdown">
                     <div className="dropdown-item" onClick={handleNewMap}>New Map</div>
-                    <div className="dropdown-item" onClick={handleOpenCloudMap}>Open Map...</div>
+                    <div className="dropdown-item" onClick={handleOpenCloudMap}>Manage Maps...</div>
                     <div className="dropdown-separator"></div>
                     <div className="dropdown-item" onClick={handleCloudSave}>Save (Cloud)</div>
-                    <div className="dropdown-item" onClick={handleSaveAsNew}>Save As New...</div>
                     <div className="dropdown-separator"></div>
                     <div className="dropdown-item" onClick={handleImportClick}>Import from File...</div>
-                    <div className="dropdown-item sub-menu-trigger">
-                        Export to File ▸
-                        <div className="sub-menu">
-                            <div className="dropdown-item" onClick={() => handleExport('mm')}>FreeMind (.mm)</div>
-                            <div className="dropdown-item" onClick={() => handleExport('json')}>JSON (.json)</div>
-                        </div>
-                    </div>
+                    <div className="dropdown-item" onClick={handleExport}>Export to File (.mm)</div>
 
                     {recentMaps.length > 0 && (
                         <>

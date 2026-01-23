@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import './MapManagerModal.css';
 
 const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
-    const { listMaps, deleteMap, renameMap } = useMap();
+    const { listMaps, deleteMap, renameMap, duplicateMap } = useMap();
     const { showToast } = useToast();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -42,6 +42,23 @@ const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
             refreshMaps();
         } catch (error) {
             showToast("Failed to delete map");
+        }
+    };
+
+    const handleDuplicate = async (e, id) => {
+        e.stopPropagation();
+        if (maps.length >= 10) {
+            alert("Cannot clone map: Storage limit (10 maps) reached.");
+            return;
+        }
+
+        try {
+            await duplicateMap(id);
+            showToast("Map duplicated");
+            refreshMaps();
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to duplicate map");
         }
     };
 
@@ -117,6 +134,13 @@ const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
                                             onClick={(e) => startRename(e, map)}
                                         >
                                             ✎
+                                        </button>
+                                        <button
+                                            className="action-btn"
+                                            title="Duplicate / Clone"
+                                            onClick={(e) => handleDuplicate(e, map.id)}
+                                        >
+                                            ❐
                                         </button>
                                         <button
                                             className="action-btn delete"

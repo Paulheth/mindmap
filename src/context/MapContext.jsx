@@ -664,6 +664,39 @@ export const MapProvider = ({ children, userId }) => {
         if (error) throw error;
     };
 
+    const duplicateMap = async (id) => {
+        if (!userId) return;
+
+        // 1. Fetch source map
+        const { data: sourceMap, error: fetchError } = await supabase
+            .from('maps')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+        if (fetchError) throw fetchError;
+        if (!sourceMap) throw new Error("Map not found");
+
+        // 2. Prepare copy
+        const newTitle = `${sourceMap.title} Copy`;
+        const newContent = { ...sourceMap.content };
+        delete newContent.mapId; // Clear internal ID ref
+
+        const mapData = {
+            user_id: userId,
+            title: newTitle,
+            content: newContent,
+            last_modified: new Date().toISOString()
+        };
+
+        // 3. Insert copy
+        const { error: insertError } = await supabase
+            .from('maps')
+            .insert(mapData);
+
+        if (insertError) throw insertError;
+    };
+
     // Auto-save Effect
     React.useEffect(() => {
         const timeout = setTimeout(() => saveMapToCloud(), 2000);
@@ -679,7 +712,8 @@ export const MapProvider = ({ children, userId }) => {
             saveMapToCloud,
             listMaps,
             deleteMap,
-            renameMap
+            renameMap,
+            duplicateMap
         }}>
             {children}
         </MapContext.Provider>
