@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import './MapManagerModal.css';
 
 const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
-    const { listMaps, deleteMap, renameMap, duplicateMap } = useMap();
+    const { listMaps, deleteMap, renameMap, duplicateMap, startNewMap } = useMap();
     const { showToast } = useToast();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -62,6 +62,18 @@ const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
         }
     };
 
+    const handleCreateNew = () => {
+        if (maps.length >= 10) {
+            alert("Cannot create new map: Storage limit (10 maps) reached.");
+            return;
+        }
+        if (confirm("Create a new map?")) {
+            startNewMap();
+            showToast("New map created");
+            onClose();
+        }
+    };
+
     const startRename = (e, map) => {
         e.stopPropagation();
         setEditingId(map.id);
@@ -94,7 +106,10 @@ const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
             <div className="map-manager-modal" onClick={e => e.stopPropagation()}>
                 <div className="modal-header">
                     <h2>Manage Cloud Maps</h2>
-                    <button className="close-button" onClick={onClose}>&times;</button>
+                    <div style={{ display: 'flex', gap: '10px' }}>
+                        <button className="primary-button" onClick={handleCreateNew}>+ New Map</button>
+                        <button className="close-button" onClick={onClose}>&times;</button>
+                    </div>
                 </div>
 
                 <div className="modal-content">
