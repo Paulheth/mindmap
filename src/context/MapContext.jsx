@@ -664,6 +664,25 @@ export const MapProvider = ({ children, userId }) => {
         if (error) throw error;
     };
 
+    const createCloudMap = async (content) => {
+        if (!userId) return;
+
+        // Ensure clean content for storage
+        const cleanContent = { ...content };
+        delete cleanContent.mapId;
+        delete cleanContent.cloudMapMetadata;
+
+        const mapData = {
+            user_id: userId,
+            title: cleanContent.filename || 'Untitled Copy',
+            content: cleanContent,
+            last_modified: new Date().toISOString()
+        };
+
+        const { error } = await supabase.from('maps').insert(mapData);
+        if (error) throw error;
+    };
+
     const duplicateMap = async (id) => {
         if (!userId) return;
 
@@ -713,7 +732,8 @@ export const MapProvider = ({ children, userId }) => {
             listMaps,
             deleteMap,
             renameMap,
-            duplicateMap
+            duplicateMap,
+            createCloudMap
         }}>
             {children}
         </MapContext.Provider>

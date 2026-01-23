@@ -4,7 +4,7 @@ import { useToast } from '../../context/ToastContext';
 import './MapManagerModal.css';
 
 const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
-    const { listMaps, deleteMap, renameMap, duplicateMap, startNewMap } = useMap();
+    const { listMaps, deleteMap, renameMap, duplicateMap, createCloudMap, state } = useMap();
     const { showToast } = useToast();
     const [maps, setMaps] = useState([]);
     const [loading, setLoading] = useState(false);
@@ -62,15 +62,24 @@ const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
         }
     };
 
-    const handleCreateNew = () => {
+    const handleSaveCurrentAsCopy = async () => {
         if (maps.length >= 10) {
-            alert("Cannot create new map: Storage limit (10 maps) reached.");
+            alert("Cannot save copy: Storage limit (10 maps) reached.");
             return;
         }
-        if (confirm("Create a new map?")) {
-            startNewMap();
-            showToast("New map created");
-            onClose();
+
+        const newName = prompt("Enter name for copy:", (state.filename || 'MindMap') + " Copy");
+        if (!newName) return;
+
+        const copyContent = { ...state, filename: newName };
+
+        try {
+            await createCloudMap(copyContent);
+            showToast("Current map saved as copy");
+            refreshMaps();
+        } catch (error) {
+            console.error(error);
+            showToast("Failed to save copy");
         }
     };
 
@@ -107,7 +116,7 @@ const MapManagerModal = ({ isOpen, onClose, onLoadMap }) => {
                 <div className="modal-header">
                     <h2>Manage Cloud Maps</h2>
                     <div style={{ display: 'flex', gap: '10px' }}>
-                        <button className="primary-button" onClick={handleCreateNew}>+ New Map</button>
+                        <button className="primary-button" onClick={handleSaveCurrentAsCopy}>+ Save Current as Copy</button>
                         <button className="close-button" onClick={onClose}>&times;</button>
                     </div>
                 </div>
