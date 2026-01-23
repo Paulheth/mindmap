@@ -4,7 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { parseMMFile } from '../../utils/mmParser';
 import { generateMMFileContent } from '../../utils/mmGenerator';
-import SaveMapModal from '../Modals/SaveMapModal';
+
 import MapManagerModal from '../Modals/MapManagerModal';
 import './MenuBar.css';
 
