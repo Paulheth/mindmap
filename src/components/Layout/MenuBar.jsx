@@ -5,13 +5,27 @@ import { useToast } from '../../context/ToastContext';
 import { parseMMFile } from '../../utils/mmParser';
 import { generateMMFileContent } from '../../utils/mmGenerator';
 import SaveMapModal from '../Modals/SaveMapModal';
+import MapManagerModal from '../Modals/MapManagerModal';
 import './MenuBar.css';
 
 const MenuBar = () => {
-    const { state, dispatch } = useMap();
+    const { state, dispatch, saveMapToCloud, loadMapFromCloud, startNewMap, listMaps } = useMap();
     const { user, logout } = useAuth();
     const { showToast } = useToast();
     const fileInputRef = useRef(null);
+    const [isMapManagerOpen, setIsMapManagerOpen] = useState(false);
+    const [recentMaps, setRecentMaps] = useState([]);
+
+    // Poll for recent maps occasionally or on menu open
+    const refreshRecents = async () => {
+        if (!user) return;
+        try {
+            const maps = await listMaps();
+            setRecentMaps(maps.slice(0, 5)); // Top 5
+        } catch (e) {
+            console.error(e);
+        }
+    };
 
     const handleLogout = async () => {
         try {
@@ -25,25 +39,52 @@ const MenuBar = () => {
         }
     };
 
-    const createNewMap = () => {
-        const needsSave = !state.autoSave;
-        if (needsSave) {
-            if (!confirm("Create new map? Unsaved changes may be lost.")) return;
-        } else {
-            if (!confirm("Start a new map?")) return;
+    const handleNewMap = async () => {
+        // 1. Force Save Current
+        if (state.root) {
+            await saveMapToCloud();
         }
 
-        const cleanState = JSON.parse(JSON.stringify(initialState));
-        dispatch({ type: 'LOAD_MAP', payload: cleanState });
-        showToast("New map created");
+        // 2. Check Limit
+        const maps = await listMaps();
+        if (maps.length >= 10) {
+            if (confirm("You have reached the 10 map limit. Open Map Manager to delete old maps?")) {
+                setIsMapManagerOpen(true);
+            }
+            return;
+        }
+
+        // 3. Create New
+        if (confirm("Start a new map? Current map has been saved to cloud.")) {
+            startNewMap();
+            showToast("New map created");
+        }
     };
 
-    const handleOpenFile = () => {
+    const handleOpenCloudMap = async () => {
+        // Force save before switching
+        if (state.root) {
+            await saveMapToCloud();
+        }
+        setIsMapManagerOpen(true);
+    };
+
+    const handleCloudLoad = async (id) => {
+        setIsMapManagerOpen(false);
+        await loadMapFromCloud(id);
+    };
+
+    const handleImportClick = () => {
+        // Force save before importing (overwriting)
+        if (state.root) {
+            saveMapToCloud();
+        }
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
             fileInputRef.current.click();
         }
     };
+
 
     const importMap = (e) => {
         const file = e.target.files[0];
@@ -59,17 +100,29 @@ const MenuBar = () => {
                 if (file.name.toLowerCase().endsWith('.json')) {
                     const loadedState = JSON.parse(text);
                     if (!loadedState.root) throw new Error("Invalid JSON");
-                    // Ensure filename is set from the file being imported, overriding whatever might be in the JSON or state
-                    dispatch({ type: 'LOAD_MAP', payload: { ...loadedState, filename: rawName } });
-                    showToast("Map loaded from JSON");
+
+                    // IMPORTANT: When importing, we treat it as a "New" map content-wise
+                    // We strip the ID so it doesn't overwrite the original map in the cloud if it was exported from there
+                    // BUT we keep the filename from the import
+                    const newState = { ...loadedState, filename: rawName };
+                    delete newState.mapId;
+
+                    dispatch({ type: 'LOAD_MAP', payload: newState });
+                    // We deliberately do NOT dispatch SET_MAP_ID so it creates a new cloud entry (if under limit)
+                    // But wait, if they have 10 maps, this will fail to autosave.
+                    // That's acceptable - they see the "Save Failed" and can Export or Delete.
+
+                    showToast("Map imported from JSON");
                 } else {
                     const parsedData = parseMMFile(text);
                     if (parsedData?.root) {
+                        const newState = { ...initialState, ...parsedData, filename: rawName };
+                        // No ID, acts as new map
                         dispatch({
                             type: 'LOAD_MAP',
-                            payload: { ...initialState, ...parsedData, filename: rawName }
+                            payload: newState
                         });
-                        showToast("Map loaded from .mm");
+                        showToast("Map imported from .mm");
                     }
                 }
             } catch (error) {
@@ -92,22 +145,12 @@ const MenuBar = () => {
         URL.revokeObjectURL(url);
     };
 
-    // Quick Save: Defaults to .mm and current filename
-    const handleQuickSave = () => {
-        const content = generateMMFileContent(state);
-        const name = state.filename || 'mindmap';
-        saveFile(content, `${name}.mm`, 'application/xml');
-        showToast(`Map saved as ${name}.mm`);
-    };
-
-    // Modal Save Confirm
-    const handleSaveConfirm = (filename, format) => {
+    // Export to File (Local)
+    const handleExport = (format) => {
         let content = '';
         let mimeType = '';
         let extension = '';
-
-        // Update filename in state
-        dispatch({ type: 'SET_FILENAME', payload: filename });
+        const filename = state.filename || 'mindmap';
 
         if (format === 'json') {
             content = JSON.stringify(state, null, 2);
@@ -120,21 +163,73 @@ const MenuBar = () => {
         }
 
         saveFile(content, `${filename}.${extension}`, mimeType);
-        showToast("Map saved successfully");
+        showToast("Map exported to file");
     };
+
+    // Manual Cloud Save
+    const handleCloudSave = async () => {
+        await saveMapToCloud();
+        showToast("Map saved to cloud");
+    };
+
+    // Save As New (Cloud Clone)
+    const handleSaveAsNew = async () => {
+        const maps = await listMaps();
+        if (maps.length >= 10) {
+            alert("Cannot clone map: Storage limit (10 maps) reached.");
+            return;
+        }
+
+        const newName = prompt("Enter name for copy:", (state.filename || 'MindMap') + " Copy");
+        if (!newName) return;
+
+        // Create copy of state without ID
+        const newState = { ...state, filename: newName };
+        delete newState.mapId;
+        delete newState.cloudMapMetadata;
+
+        // Load it (which triggers clean slate in Context)
+        dispatch({ type: 'LOAD_MAP', payload: newState });
+        // Force save to generate new ID
+        await saveMapToCloud(newState);
+        showToast("Map cloned successfully");
+    };
+
+
 
     return (
         <div className="menu-bar">
             {/* File Menu */}
-            <div className="menu-item">
+            <div className="menu-item" onMouseEnter={refreshRecents}>
                 File
                 <div className="dropdown">
-                    <div className="dropdown-item" onClick={createNewMap}>New Map</div>
+                    <div className="dropdown-item" onClick={handleNewMap}>New Map</div>
+                    <div className="dropdown-item" onClick={handleOpenCloudMap}>Open Map...</div>
                     <div className="dropdown-separator"></div>
-                    <div className="dropdown-item" onClick={handleQuickSave}>Save</div>
-                    <div className="dropdown-item" onClick={() => dispatch({ type: 'SET_SAVE_MODAL_OPEN', payload: true })}>Save As...</div>
+                    <div className="dropdown-item" onClick={handleCloudSave}>Save (Cloud)</div>
+                    <div className="dropdown-item" onClick={handleSaveAsNew}>Save As New...</div>
                     <div className="dropdown-separator"></div>
-                    <div className="dropdown-item" onClick={handleOpenFile}>Open...</div>
+                    <div className="dropdown-item" onClick={handleImportClick}>Import from File...</div>
+                    <div className="dropdown-item sub-menu-trigger">
+                        Export to File ▸
+                        <div className="sub-menu">
+                            <div className="dropdown-item" onClick={() => handleExport('mm')}>FreeMind (.mm)</div>
+                            <div className="dropdown-item" onClick={() => handleExport('json')}>JSON (.json)</div>
+                        </div>
+                    </div>
+
+                    {recentMaps.length > 0 && (
+                        <>
+                            <div className="dropdown-separator"></div>
+                            <div className="dropdown-label">Recent Maps:</div>
+                            {recentMaps.map(m => (
+                                <div key={m.id} className="dropdown-item small" onClick={() => handleCloudLoad(m.id)}>
+                                    {m.title || 'Untitled'}
+                                </div>
+                            ))}
+                        </>
+                    )}
+
                     <div className="dropdown-separator"></div>
                     {user && <div className="dropdown-item" onClick={handleLogout}>Logout</div>}
                 </div>
@@ -199,10 +294,10 @@ const MenuBar = () => {
                 style={{ display: 'none' }}
             />
 
-            <SaveMapModal
-                isOpen={state.isSaveModalOpen}
-                onClose={() => dispatch({ type: 'SET_SAVE_MODAL_OPEN', payload: false })}
-                onSave={handleSaveConfirm}
+            <MapManagerModal
+                isOpen={isMapManagerOpen}
+                onClose={() => setIsMapManagerOpen(false)}
+                onLoadMap={handleCloudLoad}
             />
         </div>
     );

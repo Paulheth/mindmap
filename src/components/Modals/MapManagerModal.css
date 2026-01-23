@@ -1,0 +1,161 @@
+.map-manager-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.map-manager-modal {
+    background: white;
+    border-radius: 8px;
+    width: 600px;
+    max-width: 90vw;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    animation: slideIn 0.2s ease-out;
+    max-height: 80vh;
+}
+
+.modal-header {
+    padding: 16px 24px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 1.25rem;
+    color: #1e293b;
+}
+
+.close-button {
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    cursor: pointer;
+    color: #64748b;
+    padding: 0;
+    line-height: 1;
+}
+
+.close-button:hover {
+    color: #334155;
+}
+
+.modal-content {
+    padding: 24px;
+    overflow-y: auto;
+}
+
+.map-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.map-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    transition: background-color 0.2s;
+}
+
+.map-item:hover {
+    background-color: #f8fafc;
+}
+
+.map-info {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    cursor: pointer;
+}
+
+.map-title {
+    font-weight: 500;
+    color: #0f172a;
+    font-size: 1rem;
+}
+
+.map-date {
+    font-size: 0.8rem;
+    color: #64748b;
+    margin-top: 2px;
+}
+
+.map-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+}
+
+.action-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 6px;
+    border-radius: 4px;
+    color: #64748b;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background-color: #e2e8f0;
+    color: #1e293b;
+}
+
+.action-btn.delete:hover {
+    background-color: #fee2e2;
+    color: #ef4444;
+}
+
+.loading-state,
+.empty-state {
+    text-align: center;
+    padding: 40px;
+    color: #64748b;
+}
+
+.usage-bar {
+    margin-bottom: 16px;
+    padding: 12px;
+    background-color: #f1f5f9;
+    border-radius: 6px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.usage-count {
+    font-weight: 600;
+    color: #334155;
+}
+
+.usage-limit {
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}

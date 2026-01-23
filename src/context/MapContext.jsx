@@ -581,91 +581,106 @@ export const MapProvider = ({ children, userId }) => {
     // Ref to track last saved content to prevent infinite loops and redundant saves
     const lastSavedContent = React.useRef(null);
 
-    // Auto-save to Supabase (Debounced)
-    React.useEffect(() => {
+    // --- Cloud Operations ---
+
+    const saveMapToCloud = async (forceContent = null) => {
         if (!userId) return;
+        if (!state.hasCheckedCloud || state.isStartupModalOpen) return;
 
-        // CRITICAL: Block saving until we have checked for existing maps
-        // This prevents overwriting the "Last Map" with a blank default map on startup
-        if (!state.hasCheckedCloud) {
-            console.log("Auto-save blocked: Cloud check not complete.");
+        // Use provided content or current state
+        // If providing content, we must be careful not to include transient keys if they aren't stripped yet
+        const mapContent = forceContent ? { ...forceContent } : { ...state };
+
+        if (!mapContent.root) return;
+
+        // Clean up transient state
+        delete mapContent.isStartupModalOpen;
+        delete mapContent.cloudMapMetadata;
+        delete mapContent.saveStatus;
+        delete mapContent.hasCheckedCloud;
+
+        const contentString = JSON.stringify(mapContent);
+        if (lastSavedContent.current === contentString) {
+            console.log("Save skipped: No changes.");
             return;
         }
 
-        // Don't save if the modal is still open (user hasn't decided yet)
-        if (state.isStartupModalOpen) {
-            console.log("Auto-save blocked: Startup modal is open.");
-            return;
+        console.log("Saving to cloud...");
+        dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
+
+        try {
+            const mapData = {
+                user_id: userId,
+                title: state.filename || 'Untitled Map',
+                content: mapContent,
+                last_modified: new Date().toISOString()
+            };
+
+            if (state.mapId) {
+                mapData.id = state.mapId;
+            }
+
+            const { data, error } = await supabase
+                .from('maps')
+                .upsert(mapData)
+                .select()
+                .single();
+
+            if (error) throw error;
+
+            if (data && !state.mapId) {
+                dispatch({ type: 'SET_MAP_ID', payload: data.id });
+            }
+
+            lastSavedContent.current = contentString;
+            dispatch({ type: 'SET_SAVE_STATUS', payload: 'saved' });
+        } catch (e) {
+            console.error("Save failed:", e);
+            dispatch({ type: 'SET_SAVE_STATUS', payload: { status: 'error', error: e.message } });
         }
+    };
 
-        const saveToCloud = async () => {
-            // Prevent saving if we haven't loaded yet or if state is empty
-            if (!state.root) {
-                console.log("Auto-save blocked: State root is empty.");
-                return;
-            }
+    const listMaps = async () => {
+        if (!userId) return [];
+        const { data, error } = await supabase
+            .from('maps')
+            .select('id, title, last_modified')
+            .eq('user_id', userId)
+            .order('last_modified', { ascending: false });
+        if (error) throw error;
+        return data || [];
+    };
 
-            const mapContent = { ...state };
+    const deleteMap = async (id) => {
+        const { error } = await supabase.from('maps').delete().eq('id', id);
+        if (error) throw error;
+    };
 
-            // Clean up transient state before saving/comparing
-            delete mapContent.isStartupModalOpen;
-            delete mapContent.cloudMapMetadata;
-            delete mapContent.saveStatus;
-            delete mapContent.hasCheckedCloud; // Don't save this
+    const renameMap = async (id, newTitle) => {
+        const { error } = await supabase
+            .from('maps')
+            .update({ title: newTitle })
+            .eq('id', id);
+        if (error) throw error;
+    };
 
-            // Check if content actually changed
-            const contentString = JSON.stringify(mapContent);
-            if (lastSavedContent.current === contentString) {
-                console.log("Auto-save skipped: No changes detected.");
-                return; // Nothing changed, skip save
-            }
-
-            console.log("Initiating auto-save to cloud...");
-            dispatch({ type: 'SET_SAVE_STATUS', payload: 'saving' });
-
-            try {
-                const mapData = {
-                    user_id: userId,
-                    title: state.filename || 'Untitled Map',
-                    content: mapContent,
-                    last_modified: new Date().toISOString()
-                };
-
-                // If we have an ID, update existing. If not, insert new.
-                if (state.mapId) {
-                    mapData.id = state.mapId;
-                }
-
-                const { data, error } = await supabase
-                    .from('maps')
-                    .upsert(mapData)
-                    .select()
-                    .single();
-
-                if (error) throw error;
-
-                if (data && !state.mapId) {
-                    // We just created a new map, save its ID so future updates go to the same row
-                    dispatch({ type: 'SET_MAP_ID', payload: data.id });
-                }
-
-                // Update ref to current content so we don't save again
-                lastSavedContent.current = contentString;
-                dispatch({ type: 'SET_SAVE_STATUS', payload: 'saved' });
-                console.log("Auto-save successful.");
-            } catch (e) {
-                console.error("Auto-save failed:", e);
-                const errorMessage = e.message || (typeof e === 'object' ? JSON.stringify(e) : String(e));
-                dispatch({ type: 'SET_SAVE_STATUS', payload: { status: 'error', error: errorMessage } });
-            }
-        };
-
-        const timeout = setTimeout(saveToCloud, 2000); // 2s Debounce
+    // Auto-save Effect
+    React.useEffect(() => {
+        const timeout = setTimeout(() => saveMapToCloud(), 2000);
         return () => clearTimeout(timeout);
     }, [state, userId]);
 
     return (
-        <MapContext.Provider value={{ state, dispatch, loadMapFromCloud, startNewMap }}>
+        <MapContext.Provider value={{
+            state,
+            dispatch,
+            loadMapFromCloud,
+            startNewMap,
+            saveMapToCloud,
+            listMaps,
+            deleteMap,
+            renameMap
+        }}>
             {children}
         </MapContext.Provider>
     );
