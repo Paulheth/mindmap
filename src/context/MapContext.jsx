@@ -249,7 +249,8 @@ const mapReducer = (state, action) => {
             // Merge loaded state on top of initialState
             const newState = {
                 ...initialState,
-                ...loadedState
+                ...loadedState,
+                hasCheckedCloud: true // Ensure verification passes so autosave works
             };
 
             // Intelligent Merge of Level Styles
@@ -545,15 +546,23 @@ export const MapProvider = ({ children, userId }) => {
 
                 if (data) {
                     console.log("Map found:", data);
-                    // Map found! Ask user what to do
-                    dispatch({
-                        type: 'FOUND_CLOUD_MAP',
-                        payload: {
-                            id: data.id,
-                            last_modified: data.last_modified,
-                            title: data.title
-                        }
-                    });
+
+                    // Check for Deep Link (Focus)
+                    const params = new URLSearchParams(window.location.search);
+                    if (params.get('focus')) {
+                        console.log("Deep link (focus) detected. Auto-loading map...");
+                        loadMapFromCloud(data.id);
+                    } else {
+                        // Map found! Ask user what to do
+                        dispatch({
+                            type: 'FOUND_CLOUD_MAP',
+                            payload: {
+                                id: data.id,
+                                last_modified: data.last_modified,
+                                title: data.title
+                            }
+                        });
+                    }
                 } else {
                     console.log("No maps found.");
                     // No map found, start fresh
